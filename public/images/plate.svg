@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <rect width="800" height="800" fill="#f2f2f2"/>
+  <rect x="160" y="300" width="480" height="160" rx="12" fill="#fff" stroke="#d9d9d9"/>
+  <text x="400" y="395" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" fill="#1a1a1a">NAME</text>
+</svg>
