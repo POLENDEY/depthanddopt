@@ -35,6 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     name: siteName,
     url: siteUrl(),
     description: "Custom 3D printed keychains, personalized objects, and small-run printing.",
+    email: "depthanddot@gmail.com",
+    telephone: "+639388528698",
   };
 
   return (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Lightbox, type LightboxImage } from "@/components/lightbox";
 
 export function ProductGallery({
@@ -11,34 +10,31 @@ export function ProductGallery({
 }) {
   const images: LightboxImage[] = items.map((item) => ({
     src: item.image,
-    alt: `${item.title} by Depth & Dot`,
+    alt: item.title,
+    title: item.title,
   }));
   const [open, setOpen] = useState(false);
   const [start, setStart] = useState(0);
 
   return (
     <>
-      <div className="grid">
+      <div className="grid store">
         {items.map((item, index) => (
-          <article className="card" key={item.slug}>
-            <button
-              type="button"
-              className="image-button"
-              onClick={() => {
-                setStart(index);
-                setOpen(true);
-              }}
-            >
-              <img src={item.image} alt={item.title} width={800} height={800} loading="lazy" />
-            </button>
+          <button
+            type="button"
+            className="card store-card"
+            key={item.slug}
+            onClick={() => {
+              setStart(index);
+              setOpen(true);
+            }}
+          >
+            <img src={item.image} alt="" width={800} height={800} loading="lazy" />
             <div>
-              <span className="kicker">{item.category}</span>
-              <h3>
-                <Link href={`/product/${item.slug}`}>{item.title}</Link>
-              </h3>
+              <h3>{item.title}</h3>
               <p>{item.summary}</p>
             </div>
-          </article>
+          </button>
         ))}
       </div>
       <Lightbox images={images} start={start} open={open} onClose={() => setOpen(false)} />

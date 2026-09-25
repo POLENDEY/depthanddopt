@@ -13,7 +13,7 @@ export default function HomePage() {
           <p className="eyebrow">3D print studio</p>
           <h1>Depth &amp; Dot</h1>
           <p className="lead">
-            Custom keychains, personal objects, and small-run printing. Each piece is made from a name, a date, or a short idea.
+            Custom keychains, personal objects, and small-run printing. A name, a date, a piece made to keep.
           </p>
           <div className="actions">
             <Link className="button" href="/product">View products</Link>
@@ -32,7 +32,7 @@ export default function HomePage() {
             <p><span>03</span>Short runs</p>
           </div>
         </div>
-        <div className="grid">
+        <div className="grid groups">
           {categories.map((category) => (
             <Link className="card" href={`/product/c/${category.slug}`} key={category.slug}>
               <img src={category.image} alt="" width={800} height={800} loading="lazy" />

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { StudioTabs } from "@/components/studio-tabs";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,45 +21,17 @@ export default async function StudioPage() {
 
   return (
     <section className="wrap page">
-      <p className="eyebrow">Inquiries</p>
+      <p className="eyebrow">Private</p>
       <h1>Studio</h1>
       <form action="/api/admin/logout" method="post">
         <button className="button secondary" type="submit">Sign out</button>
       </form>
-      {result.rows.length === 0 ? (
-        <p className="note">No inquiries yet.</p>
-      ) : (
-        <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>From</th>
-              <th>Product</th>
-              <th>Came from</th>
-              <th>Status</th>
-              <th>Received</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.rows.map((inquiry) => (
-              <tr key={inquiry.id}>
-                <td>
-                  <Link href={`/studio/inquiries/${inquiry.id}`}>{inquiry.name}</Link>
-                  <div className="note">{inquiry.email}</div>
-                </td>
-                <td>{inquiry.interest}</td>
-                <td>
-                  {inquiry.source_label || "Inquire form"}
-                  {inquiry.source_path ? <div className="note">{inquiry.source_path}</div> : null}
-                </td>
-                <td className="status">{inquiry.status}</td>
-                <td>{new Date(inquiry.created_at).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      )}
+      <StudioTabs
+        inquiries={result.rows.map((inquiry) => ({
+          ...inquiry,
+          created_at: new Date(inquiry.created_at).toISOString(),
+        }))}
+      />
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ObjectReel } from "@/components/object-reel";
 import { categories } from "@/lib/products";
 
 export const dynamic = "force-static";
@@ -26,6 +27,7 @@ export default function ProductIndexPage() {
             </div>
           </Link>
         ))}
+        <ObjectReel />
       </div>
     </section>
   );

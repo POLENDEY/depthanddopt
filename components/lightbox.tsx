@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type LightboxImage = { src: string; alt: string };
+export type LightboxImage = { src: string; alt: string; title: string };
 
 export function Lightbox({
   images,
@@ -43,11 +43,14 @@ export function Lightbox({
   }
 
   function go(next: number) {
+    const count = images.length;
+    if (count === 0) return;
+    const target = (next + count) % count;
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const frame = scroller.clientWidth || 1;
-    scroller.scrollTo({ left: next * frame, behavior: "smooth" });
-    setIndex(next);
+    scroller.scrollTo({ left: target * frame, behavior: "smooth" });
+    setIndex(target);
   }
 
   return (
@@ -55,7 +58,7 @@ export function Lightbox({
       ref={dialogRef}
       className="lightbox"
       closedby="any"
-      aria-label="Product images"
+      aria-label="Product"
       onClose={onClose}
       onClick={(event) => {
         if (event.target === dialogRef.current) onClose();
@@ -66,18 +69,31 @@ export function Lightbox({
           Close
         </button>
       </div>
-      <div className="lightbox-scroller" ref={scrollerRef} onScroll={onScroll}>
-        {images.map((image) => (
-          <img key={image.src} src={image.src} alt={image.alt} width={800} height={800} />
-        ))}
+      <div className="lightbox-stage">
+        <button type="button" className="lightbox-nav prev" onClick={() => go(index - 1)} aria-label="Previous">
+          Previous
+        </button>
+        <div className="lightbox-scroller" ref={scrollerRef} onScroll={onScroll}>
+          {images.map((image) => (
+            <figure className="lightbox-slide" key={image.title}>
+              <img src={image.src} alt={image.alt} width={800} height={800} />
+              <figcaption>
+                <h2>{image.title}</h2>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+        <button type="button" className="lightbox-nav next" onClick={() => go(index + 1)} aria-label="Next">
+          Next
+        </button>
       </div>
       <div className="dots" role="tablist" aria-label="Images">
         {images.map((image, dot) => (
           <button
-            key={image.src}
+            key={image.title}
             type="button"
             className={dot === index ? "dot on" : "dot"}
-            aria-label={`Show image ${dot + 1}`}
+            aria-label={`Show ${image.title}`}
             aria-current={dot === index ? "true" : undefined}
             onClick={() => go(dot)}
           />

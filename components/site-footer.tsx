@@ -3,7 +3,10 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="wrap">
         <span>Depth &amp; Dot</span>
-        <span>3D printed objects and small-run printing.</span>
+        <address>
+          <a href="mailto:depthanddot@gmail.com">depthanddot@gmail.com</a>
+          <a href="tel:+639388528698">+63 938 852 8698</a>
+        </address>
       </div>
     </footer>
   );

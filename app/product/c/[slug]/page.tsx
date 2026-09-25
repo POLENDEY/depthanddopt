@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ProductGallery } from "@/components/product-gallery";
 import { categories, getCategory, productsInCategory } from "@/lib/products";
 
 export const dynamic = "force-static";
@@ -29,8 +28,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <Link className="text-link" href="/product">All products</Link>
       <p className="eyebrow">Product</p>
       <h1>{category.title}</h1>
-      <p className="lead">{category.summary} Select an image to view it large, then swipe between the pieces in this group.</p>
-      <ProductGallery items={items} />
+      <p className="lead">{category.summary}</p>
+      <div className="grid store">
+        {items.map((item) => (
+          <Link className="card" href={`/product/${item.slug}`} key={item.slug}>
+            <img src={item.image} alt="" width={800} height={800} loading="lazy" />
+            <div>
+              <h3>{item.title}</h3>
+              <p>{item.summary}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
       <p>
         <Link className="button" href={`/inquire?interest=${encodeURIComponent(items[0]?.title || "Something else")}&from=${encodeURIComponent(`/product/c/${category.slug}`)}&label=${encodeURIComponent(`Product · ${category.title}`)}`}>
           Inquire about this group
