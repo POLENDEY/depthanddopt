@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BannerSlider } from "@/components/banner-slider";
+import { Keychain } from "@/components/keychain";
 import { categories } from "@/lib/products";
 
 export const dynamic = "force-static";
@@ -19,16 +20,18 @@ export default function HomePage() {
             <Link className="button secondary" href="/inquire">Start an inquiry</Link>
           </div>
         </div>
-        <div className="stage" aria-hidden="true">
-          <div className="tag">
-            <i className="ring" />
-            <span>D&amp;D</span>
-          </div>
-        </div>
+        <Keychain />
       </section>
       <BannerSlider />
       <section className="wrap band">
-        <h2>Product groups</h2>
+        <div className="band-head">
+          <h2>Product groups</h2>
+          <div className="marks" aria-label="Studio notes">
+            <p><span>01</span>Named pieces</p>
+            <p><span>02</span>Solid color</p>
+            <p><span>03</span>Short runs</p>
+          </div>
+        </div>
         <div className="grid">
           {categories.map((category) => (
             <Link className="card" href={`/product/c/${category.slug}`} key={category.slug}>

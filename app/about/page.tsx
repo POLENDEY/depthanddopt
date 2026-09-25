@@ -10,16 +10,16 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <section className="wrap page">
+    <section className="page">
       <img
         className="about-banner"
-        src="/images/about-banner.svg"
+        src="/images/cover.webp"
         alt=""
         width={1600}
         height={640}
         fetchPriority="high"
       />
-      <div className="split">
+      <div className="wrap split">
       <div>
         <p className="eyebrow">Studio</p>
         <h1>About</h1>
@@ -33,6 +33,28 @@ export default function AboutPage() {
         <Link className="text-link" href="/inquire">Write to the studio</Link>
       </div>
       </div>
+      <div className="wrap steps">
+        <article>
+          <span>01</span>
+          <h2>Brief</h2>
+          <p>A name, a date, a color, and where the piece will live.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h2>Make</h2>
+          <p>Printed in a solid color, simple enough to hold every day.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h2>Reply</h2>
+          <p>A quote comes back by email. Nothing is priced on the page.</p>
+        </article>
+      </div>
+      <p className="wrap about-links">
+        <Link href="/product/c/3d-print">3D print</Link>
+        <Link href="/product/c/personal">Personal</Link>
+        <Link href="/product/c/print">Print</Link>
+      </p>
     </section>
   );
 }

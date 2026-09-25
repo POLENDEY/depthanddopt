@@ -82,8 +82,11 @@ h1 { margin: 0; font-size: clamp(3.2rem, 7vw, 5.6rem); line-height: 0.92; letter
   position: relative;
   box-shadow: 0 20px 50px rgb(0 0 0 / 6%);
   transform-style: preserve-3d;
-  animation: turn 16s linear infinite;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
+.tag:active { cursor: grabbing; }
 .tag span { font-size: 2rem; letter-spacing: -0.06em; }
 .ring {
   position: absolute;
@@ -94,17 +97,18 @@ h1 { margin: 0; font-size: clamp(3.2rem, 7vw, 5.6rem); line-height: 0.92; letter
   border-radius: 50%;
   background: var(--bg);
 }
-@keyframes turn {
-  from { transform: rotateY(0deg) rotateX(8deg); }
-  to { transform: rotateY(360deg) rotateX(8deg); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .tag { animation: none; }
   html { scroll-behavior: auto; }
 }
 
+.band-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem 2rem; margin-bottom: 1.2rem; }
+.band-head h2 { margin: 0; }
+.marks { display: flex; flex-wrap: wrap; gap: 0.35rem 1.25rem; margin: 0; }
+.marks p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.marks span { color: var(--ink); margin-right: 0.45rem; font-variant-numeric: tabular-nums; }
 .band { padding: 1rem 0 4rem; content-visibility: auto; contain-intrinsic-size: auto 640px; }
 .band h2 { font-size: clamp(1.8rem, 3vw, 2.4rem); letter-spacing: -0.04em; font-weight: 520; margin: 0 0 1.2rem; }
+.band-head h2 { margin: 0; }
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; }
 .card {
   background: var(--paper);
@@ -154,10 +158,11 @@ textarea { min-height: 9rem; resize: vertical; }
 .reply { white-space: pre-wrap; background: var(--soft); border-radius: 12px; padding: 0.8rem; }
 
 @media (max-width: 900px) {
-  .hero, .split, .detail, .grid { grid-template-columns: 1fr; }
+  .hero, .split, .detail, .grid, .steps, .marks { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr 1fr; }
   .hero { gap: 1.5rem; padding: 2.5rem 0 2rem; }
   .stage { height: 260px; }
+  .band-head { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
   .page { padding: 2.2rem 0 3rem; }
 }
 .banner { padding-bottom: 1rem; }
@@ -221,7 +226,23 @@ textarea { min-height: 9rem; resize: vertical; }
   background: var(--soft);
 }
 .lightbox .dots { justify-content: center; margin-top: 0.8rem; }
-.about-banner { width: 100%; height: clamp(220px, 42vw, 420px); object-fit: cover; border-radius: 18px; background: #f2f2f2; border: 1px solid var(--line); margin-bottom: 2rem; }
+.about-banner {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 42vw, 420px);
+  object-fit: cover;
+  margin: 0 0 2rem;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+.steps span { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.12em; }
+.steps h2 { margin: 0.4rem 0; font-size: 1.35rem; letter-spacing: -0.04em; font-weight: 520; }
+.steps p { margin: 0; color: var(--muted); }
+.about-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 1.5rem; }
+.about-links a { color: var(--ink); text-decoration: none; }
 
 @media (max-width: 640px) {
   .wrap { width: min(1120px, calc(100% - 1.25rem)); }
