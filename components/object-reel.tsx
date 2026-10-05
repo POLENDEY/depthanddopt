@@ -2,16 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const samples = [
-  { title: "Keychain", image: "/images/keychain.svg" },
-  { title: "Charm", image: "/images/charm.svg" },
-  { title: "Plate", image: "/images/plate.svg" },
-  { title: "Favor", image: "/images/favor.svg" },
-  { title: "Card", image: "/images/card.svg" },
-  { title: "Sign", image: "/images/sign.svg" },
+const slides = [
+  { title: "Isabella articulated name", model: "/models/isabella-articulated-name.glb" },
+  { title: "Amelia magnet", model: "/models/amelia-magnet.glb" },
+  { title: "Nicole keychain", model: "/models/nicole-keychain.glb" },
+  { title: "Spotify code", model: "/models/spotify-code-spotify-code.glb" },
 ];
-
-const slides = [{ title: "Spotify Panaginip", model: "/models/Spotify-Panaginip.glb" }, ...samples];
 const loop = [...slides, slides[0]];
 
 export function ObjectReel() {
@@ -19,14 +15,7 @@ export function ObjectReel() {
   const [animate, setAnimate] = useState(true);
   const holding = useRef(false);
   const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
-  const rotation = useRef({ x: 0.2, y: 0.4 });
-  const modelRef = useRef<HTMLDivElement>(null);
-
-  function paint() {
-    const model = modelRef.current;
-    if (!model) return;
-    model.style.transform = `rotateX(${rotation.current.x}rad) rotateY(${rotation.current.y}rad)`;
-  }
+  const rotation = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -45,18 +34,14 @@ export function ObjectReel() {
   }, [animate, index]);
 
   useEffect(() => {
-    rotation.current = { x: 0.2, y: 0.4 };
-    paint();
+    rotation.current = { x: 0, y: 0 };
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let frame = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const delta = now - last;
       last = now;
-      if (!drag.current) {
-        rotation.current.y += delta * 0.00055;
-        paint();
-      }
+      if (!drag.current) rotation.current.y += delta * 0.00055;
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
@@ -87,7 +72,6 @@ export function ObjectReel() {
       x: Math.max(-1.1, Math.min(1.1, drag.current.rx + (event.clientY - drag.current.y) * 0.008)),
       y: drag.current.ry + (event.clientX - drag.current.x) * 0.008,
     };
-    paint();
   }
 
   function onPointerUp() {
@@ -114,13 +98,7 @@ export function ObjectReel() {
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
               >
-                {"model" in slide ? (
-                  <GlbModel src={slide.model} rotation={rotation} />
-                ) : (
-                  <div className="reel-model" ref={slideIndex === index ? modelRef : undefined}>
-                    <img src={slide.image} alt="" width={240} height={240} />
-                  </div>
-                )}
+                <GlbModel src={slide.model} rotation={rotation} />
               </div>
             </div>
           ))}
@@ -179,7 +157,7 @@ function GlbModel({
         camera.aspect = width / height;
         const vFov = THREE.MathUtils.degToRad(camera.fov);
         const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-        const dist = Math.max(halfY / Math.tan(vFov / 2), halfX / Math.tan(hFov / 2)) * 1.2;
+        const dist = Math.max(halfY / Math.tan(vFov / 2), halfX / Math.tan(hFov / 2)) * 1.35;
         camera.position.set(0, 0, dist);
         camera.near = Math.max(dist / 100, 0.01);
         camera.far = dist * 20;
@@ -197,16 +175,16 @@ function GlbModel({
         (gltf) => {
           if (disposed) return;
           const root = gltf.scene;
-          const box = new THREE.Box3().setFromObject(root);
+          const fittedGroup = new THREE.Group();
+          fittedGroup.rotation.x = Math.PI / 2;
+          fittedGroup.add(root);
+          fittedGroup.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(fittedGroup);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
-          const fittedGroup = new THREE.Group();
-          root.position.sub(center);
-          fittedGroup.add(root);
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          fittedGroup.scale.setScalar(1 / maxDim);
+          fittedGroup.position.sub(center);
           group.add(fittedGroup);
-          half = { x: size.x / maxDim / 2, y: size.y / maxDim / 2 };
+          half = { x: size.x / 2, y: size.y / 2 };
           fitted = true;
           frameCamera(half.x, half.y);
           setStatus("");
