@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
-export function Keychain() {
+export function BusinessCard() {
   const stageRef = useRef<HTMLDivElement>(null);
-  const tagRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const rotation = useRef({ x: 8, y: 0 });
   const scale = useRef(1);
   const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
@@ -13,9 +13,9 @@ export function Keychain() {
   const turned = useRef(false);
 
   function paint() {
-    const tag = tagRef.current;
-    if (!tag) return;
-    tag.style.transform = `rotateX(${rotation.current.x}deg) rotateY(${rotation.current.y}deg) scale(${scale.current})`;
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transform = `rotateX(${rotation.current.x}deg) rotateY(${rotation.current.y}deg) scale(${scale.current})`;
   }
 
   function pinchDistance() {
@@ -99,26 +99,36 @@ export function Keychain() {
   return (
     <div className="stage" ref={stageRef}>
       <div
-        ref={tagRef}
-        className="tag"
+        ref={cardRef}
+        className="business-card"
         role="img"
-        aria-label="Keychain. Hold and drag to rotate. Back shows depthanddot@gmail.com and +63 938 852 8698."
+        aria-label="Depth & Dot portrait business card. Hold and drag to see the navy logo side and contact side with email and phone number."
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
         {Array.from({ length: 2 }, (_, index) => (
-          <span className="tag-slab" key={index} style={{ transform: `translateZ(${-index}px)` }} />
+          <span className="business-card-edge" key={index} style={{ transform: `translateZ(${-index}px)` }} />
         ))}
-        <div className="tag-face">
-          <i className="ring" />
-          <span>D&amp;D</span>
+        <div className="business-card-front">
+          <div className="business-card-brand">
+            <span className="business-card-mark" aria-hidden="true" />
+            <strong>DEPTH &amp; DOT</strong>
+            <small>OBJECTS MADE PERSONAL</small>
+          </div>
         </div>
-        <div className="tag-back">
-          <i className="ring" />
-          <p>depthanddot@gmail.com</p>
-          <p>+63 938 852 8698</p>
+        <div className="business-card-back">
+          <div className="business-card-contact-panel">
+            <div className="business-card-contacts">
+              <p><i aria-hidden="true">@</i>depthanddot@gmail.com</p>
+              <p><i aria-hidden="true">+</i>+63 938 852 8698</p>
+            </div>
+          </div>
+          <div className="business-card-name">
+            <strong>DEPTH &amp; DOT</strong>
+            <span>3D PRINT STUDIO</span>
+          </div>
         </div>
       </div>
     </div>

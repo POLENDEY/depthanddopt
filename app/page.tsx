@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BannerSlider } from "@/components/banner-slider";
-import { Keychain } from "@/components/keychain";
+import { BusinessCard } from "@/components/business-card";
 import { categories } from "@/lib/products";
 
 export const dynamic = "force-static";
@@ -20,7 +20,7 @@ export default function HomePage() {
             <Link className="button secondary" href="/inquire">Start an inquiry</Link>
           </div>
         </div>
-        <Keychain />
+        <BusinessCard />
       </section>
       <BannerSlider />
       <section className="wrap band">

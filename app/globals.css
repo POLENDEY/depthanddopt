@@ -71,64 +71,121 @@ h1 { margin: 0; font-size: clamp(3.2rem, 7vw, 5.6rem); line-height: 0.92; letter
 .text-link { color: var(--ink); padding-inline: 0; }
 
 .stage { height: 420px; display: grid; place-items: center; perspective: 900px; }
-.tag {
+.business-card {
+  --card-navy: #071d33;
   width: 180px;
-  height: 250px;
+  height: 282px;
   position: relative;
   transform-style: preserve-3d;
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
-.tag-slab,
-.tag-face,
-.tag-back {
+.business-card-edge,
+.business-card-front,
+.business-card-back {
   position: absolute;
   inset: 0;
-  border-radius: 22px;
+  border-radius: 12px;
 }
-.tag-slab { background: #d9d9d9; }
-.tag-slab,
-.tag-face,
-.tag-back {
-  mask-image: radial-gradient(circle at 50% 32px, transparent 11px, #000 12px);
-}
-.tag-face,
-.tag-back {
-  background: #fff;
-  border: 1px solid #e4e4e4;
+.business-card-edge { background: #0b2944; }
+.business-card-front,
+.business-card-back {
+  overflow: hidden;
+  border: 1px solid rgb(7 29 51 / 12%);
   backface-visibility: hidden;
 }
-.tag-face {
+.business-card-front {
   display: grid;
   place-items: center;
+  background: var(--card-navy);
+  box-shadow: 0 18px 40px rgb(7 29 51 / 24%);
   transform: translateZ(1px);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 8%);
 }
-.tag-back {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 1.1rem;
-  text-align: center;
+.business-card-front::before,
+.business-card-back::before {
+  position: absolute;
+  inset: 0;
+  background: url("/images/business-card-grid.svg") repeat;
+  background-size: 52px 90px;
+  content: "";
+  pointer-events: none;
+}
+.business-card-front::before { opacity: 0.22; }
+.business-card-back {
+  background: #fff;
   transform: translateZ(-2px) rotateY(180deg);
 }
-.tag-back p { margin: 0; font-size: 0.68rem; letter-spacing: -0.02em; line-height: 1.35; }
-.tag:active { cursor: grabbing; }
-.tag-face span { font-size: 2rem; letter-spacing: -0.06em; }
-.ring {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  margin-left: -14px;
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--ink);
-  border-radius: 50%;
-  background: transparent;
+.business-card-back::before { filter: brightness(0); opacity: 0.07; }
+.business-card-brand,
+.business-card-contact-panel,
+.business-card-name { position: absolute; z-index: 1; }
+.business-card-brand {
+  display: grid;
+  justify-items: center;
+  gap: 0.42rem;
+  color: #f7f8fa;
 }
+.business-card-mark {
+  position: relative;
+  width: 27px;
+  height: 27px;
+  margin-bottom: 0.15rem;
+  border: 3px solid #f7f8fa;
+  border-radius: 7px;
+  transform: rotate(45deg);
+}
+.business-card-mark::after {
+  position: absolute;
+  inset: 5px;
+  border: 2px solid #f7f8fa;
+  border-radius: 2px;
+  content: "";
+}
+.business-card-brand strong { font-size: 0.85rem; letter-spacing: 0.16em; }
+.business-card-brand small { color: #c4cfda; font-size: 0.43rem; letter-spacing: 0.2em; }
+.business-card-contact-panel {
+  inset: 0 0 auto;
+  height: 59%;
+  padding: 3.2rem 0.85rem 2.4rem;
+  background: var(--card-navy);
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+}
+.business-card-contacts { display: grid; gap: 0.75rem; }
+.business-card-contacts p {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #f7f8fa;
+  font-size: 0.48rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.business-card-contacts i {
+  display: grid;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid #afc0d0;
+  border-radius: 50%;
+  color: #f7f8fa;
+  font-size: 0.55rem;
+  font-style: normal;
+}
+.business-card-name {
+  right: 0.5rem;
+  bottom: 1.7rem;
+  left: 0.5rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  color: var(--card-navy);
+}
+.business-card-name strong { font-size: 0.88rem; letter-spacing: 0.12em; }
+.business-card-name span { color: #52606c; font-size: 0.47rem; letter-spacing: 0.19em; }
+.business-card:active { cursor: grabbing; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
@@ -375,8 +432,8 @@ textarea { min-height: 9rem; resize: vertical; }
   h1 { font-size: clamp(2.3rem, 12vw, 3.4rem); }
   .page h1 { font-size: clamp(2rem, 10vw, 2.8rem); }
   .lead { font-size: 1rem; }
-  .stage { height: 200px; }
-  .tag { width: 130px; height: 180px; }
+  .stage { height: 280px; }
+  .business-card { width: 146px; height: 230px; }
   .site-footer .wrap { flex-direction: column; }
   .banner-copy { padding: 1rem; }
   .banner-copy h2 { font-size: clamp(1.35rem, 7vw, 1.8rem); }
