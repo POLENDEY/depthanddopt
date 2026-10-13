@@ -26,13 +26,9 @@ const slides = [
   },
 ];
 
-const loop = [...slides, slides[0]];
-
 export function BannerSlider() {
   const [index, setIndex] = useState(0);
-  const [animate, setAnimate] = useState(true);
   const [paused, setPaused] = useState(false);
-  const active = index % slides.length;
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -42,53 +38,38 @@ export function BannerSlider() {
   useEffect(() => {
     if (paused) return;
     const timer = window.setInterval(() => {
-      setAnimate(true);
-      setIndex((current) => current + 1);
+      setIndex((current) => (current + 1) % slides.length);
     }, 5000);
     return () => window.clearInterval(timer);
   }, [paused]);
 
-  useEffect(() => {
-    if (animate || index !== 0) return;
-    const frame = window.requestAnimationFrame(() => setAnimate(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, [animate, index]);
-
-  function onTransitionEnd() {
-    if (index !== slides.length) return;
-    setAnimate(false);
-    setIndex(0);
-  }
-
   return (
     <section className="wrap banner" aria-roledescription="carousel" aria-label="Studio highlights">
       <div className="banner-window">
-        <div
-          className={animate ? "banner-track" : "banner-track still"}
-          style={{ transform: `translateX(-${index * 100}%)` }}
-          onTransitionEnd={onTransitionEnd}
-        >
-          {loop.map((slide, slideIndex) => (
-            <article className="banner-slide" key={`${slide.href}-${slideIndex}`} aria-hidden={slideIndex !== index}>
-              <img
-                src={slide.image}
-                alt=""
-                width={1600}
-                height={700}
-                fetchPriority={slideIndex === 0 ? "high" : undefined}
-                loading={slideIndex === 0 ? "eager" : "lazy"}
-              />
-              <div className="banner-copy">
-                <p className="banner-dark">{slide.kicker}</p>
-                <h2 className="banner-light">{slide.title}</h2>
-                <p className="banner-light faded">{slide.text}</p>
-                <a className="banner-light" href={slide.href} tabIndex={slideIndex === index ? 0 : -1}>
-                  View this group
-                </a>
-              </div>
-            </article>
-          ))}
-        </div>
+        {slides.map((slide, slideIndex) => (
+          <article
+            className={slideIndex === index ? "banner-slide on" : "banner-slide"}
+            key={slide.href}
+            aria-hidden={slideIndex !== index}
+          >
+            <img
+              src={slide.image}
+              alt=""
+              width={1600}
+              height={700}
+              fetchPriority={slideIndex === 0 ? "high" : undefined}
+              loading={slideIndex === 0 ? "eager" : "lazy"}
+            />
+            <div className="banner-copy">
+              <p className="banner-dark">{slide.kicker}</p>
+              <h2 className="banner-light">{slide.title}</h2>
+              <p className="banner-light faded">{slide.text}</p>
+              <a className="banner-light" href={slide.href} tabIndex={slideIndex === index ? 0 : -1}>
+                View this group
+              </a>
+            </div>
+          </article>
+        ))}
       </div>
       <div className="banner-controls">
         <button
@@ -99,18 +80,15 @@ export function BannerSlider() {
         >
           {paused ? "Play" : "Pause"}
         </button>
-        <div className="dots" role="tablist" aria-label="Slides">
+        <div className="dots" role="tablist" aria-label="Highlights">
           {slides.map((item, dot) => (
             <button
               key={item.href}
               type="button"
-              className={dot === active ? "dot on" : "dot"}
+              className={dot === index ? "dot on" : "dot"}
               aria-label={`Show slide ${dot + 1}`}
-              aria-current={dot === active ? "true" : undefined}
-              onClick={() => {
-                setAnimate(true);
-                setIndex(dot);
-              }}
+              aria-current={dot === index ? "true" : undefined}
+              onClick={() => setIndex(dot)}
             />
           ))}
         </div>

@@ -18,6 +18,58 @@ export type Product = {
 
 export const products: Product[] = [
   {
+    slug: "isabella-articulated-name",
+    title: "Articulated Name",
+    category: "3D print",
+    summary: "A name with joints that bend, printed as one piece.",
+    description:
+      "Letters linked so the name can flex. Printed in place, with the thickness and color set around how it will be carried.",
+    image: "/images/keychain.svg",
+    details: ["Articulated letters", "Print-in-place joints", "A name made to move"],
+    pieces: [
+      { slug: "isabella", title: "Articulated Name", summary: "A flexible name, printed as one piece.", image: "/images/keychain.svg" },
+    ],
+  },
+  {
+    slug: "amelia-customize-magnet-name",
+    title: "Customize Magnet Name",
+    category: "3D print",
+    summary: "A magnetic name for a board, a fridge, or a desk.",
+    description:
+      "Raised letters on a solid magnet. The name is set for the place it will stick, with a color that reads at a glance.",
+    image: "/images/plate.svg",
+    details: ["Custom name", "Magnetic back", "Raised letters"],
+    pieces: [
+      { slug: "amelia", title: "Customize Magnet Name", summary: "A name on a magnet.", image: "/images/plate.svg" },
+    ],
+  },
+  {
+    slug: "spotify-code",
+    title: "Spotify Bar code",
+    category: "3D print",
+    summary: "A raised Spotify code that can be scanned.",
+    description:
+      "The Spotify barcode built up so it can be scanned with the app. A song, a playlist, or a profile, held as a small object.",
+    image: "/images/sign.svg",
+    details: ["Scannable Spotify code", "Raised bars", "A song you can hold"],
+    pieces: [
+      { slug: "spotify-bar-code", title: "Spotify Bar code", summary: "A scannable Spotify code.", image: "/images/sign.svg" },
+    ],
+  },
+  {
+    slug: "customize-keychain-name",
+    title: "Customize Keychain name",
+    category: "3D print",
+    summary: "A keychain with a name set across the face.",
+    description:
+      "A solid tag and a ring, with the name you want to carry. The letters, thickness, and color are set for keys, bags, and zippers.",
+    image: "/images/keychain.svg",
+    details: ["Custom name", "Solid piece with a ring", "Sized for keys and bags"],
+    pieces: [
+      { slug: "named-keychain", title: "Customize Keychain name", summary: "A keychain with a name.", image: "/images/keychain.svg" },
+    ],
+  },
+  {
     slug: "monogram-keychain",
     title: "Monogram keychain",
     category: "3D print",
@@ -171,4 +223,23 @@ export function getCategory(slug: string) {
 
 export function productsInCategory(title: Product["category"]) {
   return products.filter((product) => product.category === title);
+}
+
+export function getCategorySlug(category: Product["category"] | string): string {
+  if (category === "3D print" || category === "3d-print") return "3d-print";
+  return category.toLowerCase();
+}
+
+export function getCategoryByTitle(title: Product["category"]) {
+  return categories.find((category) => category.title === title);
+}
+
+export function getRelatedProducts(slug: string, limit = 3): Product[] {
+  const current = getProduct(slug);
+  if (!current) return [];
+  return products.filter((p) => p.category === current.category && p.slug !== slug).slice(0, limit);
+}
+
+export function getTotalPiecesCount(): number {
+  return products.reduce((acc, p) => acc + (p.pieces?.length || 0), 0);
 }

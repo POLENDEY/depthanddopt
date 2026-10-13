@@ -11,7 +11,9 @@ export default function HomePage() {
       <section className="wrap hero">
         <div>
           <p className="eyebrow">3D print studio</p>
-          <h1>Depth &amp; Dot</h1>
+          <h1>
+            <img className="hero-logo" src="/depth%26dot.svg" alt="Depth & Dot" width={595} height={595} />
+          </h1>
           <p className="lead">
             Custom keychains, personal objects, and small-run printing. A name, a date, a piece made to keep.
           </p>
