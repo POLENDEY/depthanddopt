@@ -2,12 +2,24 @@
 
 import { useEffect, useState } from "react";
 
-const slides = [
+type Slide = {
+  kicker: string;
+  title: string;
+  text: string;
+  image: string;
+  srcSet?: string;
+  position?: string;
+  href: string;
+};
+
+const slides: Slide[] = [
   {
     kicker: "3D print",
     title: "Keychains with a name",
     text: "A small tag, a ring, and the letters you want to carry.",
-    image: "/images/keychain.svg",
+    image: "/images/banner-keychain-letter.webp",
+    srcSet: "/images/banner-keychain-letter-1200.webp 1200w, /images/banner-keychain-letter.webp 2240w",
+    position: "80% 50%",
     href: "/product/c/3d-print",
   },
   {
@@ -54,6 +66,9 @@ export function BannerSlider() {
           >
             <img
               src={slide.image}
+              srcSet={slide.srcSet}
+              sizes={slide.srcSet ? "(max-width: 1160px) 100vw, 1120px" : undefined}
+              style={slide.position ? { objectPosition: slide.position } : undefined}
               alt=""
               width={1600}
               height={700}
