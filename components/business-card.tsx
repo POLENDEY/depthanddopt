@@ -122,7 +122,7 @@ export function BusinessCard() {
           <div className="business-card-contact-panel">
             <div className="business-card-contacts">
               <p><i aria-hidden="true">@</i>depthanddot@gmail.com</p>
-              <p><i aria-hidden="true">+</i>+63 938 852 8698</p>
+              <p><i aria-hidden="true">+</i>+63 970 098 1948</p>
             </div>
           </div>
           <div className="business-card-name">

@@ -14,48 +14,63 @@ export const metadata: Metadata = {
 
 export default function ProductIndexPage() {
   return (
-    <div className="wrap page aesthetic-product-page">
-      <Breadcrumbs items={[{ label: "Index", href: "/" }, { label: "Catalog" }]} />
-
-      {/* Minimalist Hero: Typography + 3D Object Pedestal */}
-      <section className="aesthetic-hero" aria-label="Catalog introduction and 3D preview">
-        <div className="aesthetic-hero-copy">
-          <p className="aesthetic-eyebrow">Studio Catalog &bull; 2026</p>
-          <h1 className="aesthetic-title">Products &amp; Objects</h1>
-          <p className="aesthetic-lead">
-            Tactile 3D printed keychains, personal objects, and studio print work. Engineered with solid pigments, geometric type, and durable matte finishes.
-          </p>
-
-          <div className="aesthetic-hero-nav">
-            <span className="hero-nav-label">Collections</span>
-            <div className="hero-nav-links">
-              {categories.map((c) => (
-                <Link key={c.slug} href={`/product/c/${c.slug}`} className="hero-nav-item">
-                  <span>{c.title}</span>
-                  <span className="nav-arrow">&rarr;</span>
-                </Link>
-              ))}
+    <>
+      <section className="hero catalog-hero" aria-label="Catalog introduction and 3D preview">
+        <div className="wrap catalog-hero-inner">
+          <div className="hero-copy">
+            <Breadcrumbs items={[{ label: "Index", href: "/" }, { label: "Catalog" }]} />
+            <p className="catalog-eyebrow">Studio Catalog &bull; 2026</p>
+            <h1 className="catalog-title">Products &amp; Objects</h1>
+            <p className="hero-lead">
+              Tactile 3D printed keychains, personal objects, and studio print work. Engineered with solid pigments, geometric type, and durable matte finishes.
+            </p>
+            <div className="hero-actions">
+              <a className="hero-discover" href="#directory">
+                <span>Browse all</span>
+                <span className="hero-discover-dots" aria-hidden="true" />
+              </a>
+              <span className="hero-actions-rule" aria-hidden="true" />
+              <Link className="hero-connect" href="/inquire">
+                <span className="hero-round">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </span>
+                <span>Start an inquiry</span>
+              </Link>
             </div>
+          </div>
+
+          <div className="catalog-hero-reel">
+            <ObjectReel />
           </div>
         </div>
 
-        <div className="aesthetic-hero-pedestal-wrap">
-          <ObjectReel />
+        <div className="hero-bar">
+          <nav className="wrap catalog-bar-inner" aria-label="Collections">
+            {categories.map((c, i) => (
+              <Link key={c.slug} href={`/product/c/${c.slug}`} className="catalog-bar-link">
+                <span className="hero-note-index">{i + 1}</span>
+                <span>
+                  <strong>{c.title}</strong>
+                  <small>{c.summary}</small>
+                </span>
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
 
-      {/* Thin elegant separator */}
-      <div className="aesthetic-divider" aria-hidden="true" />
+      <div className="wrap page aesthetic-product-page" id="directory">
+        <section className="aesthetic-directory-section" aria-label="Product directory">
+          <div className="aesthetic-section-head">
+            <h2 className="aesthetic-section-title">Directory</h2>
+            <span className="aesthetic-section-count">{products.length} items</span>
+          </div>
 
-      {/* Complete Product Directory */}
-      <section className="aesthetic-directory-section" aria-label="Product directory">
-        <div className="aesthetic-section-head">
-          <h2 className="aesthetic-section-title">Directory</h2>
-          <span className="aesthetic-section-count">{products.length} items</span>
-        </div>
-
-        <ProductCatalog products={products} categories={categories} />
-      </section>
-    </div>
+          <ProductCatalog products={products} categories={categories} />
+        </section>
+      </div>
+    </>
   );
 }

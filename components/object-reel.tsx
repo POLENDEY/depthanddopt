@@ -42,6 +42,15 @@ const slides: Slide3D[] = [
     productSlug: "customize-keychain-name",
   },
   {
+    id: "anne",
+    title: "Anne Keychain",
+    shortName: "Anne Keychain",
+    tag: "Anne Keychain",
+    summary: "A bold name keychain with a raised face and a ring eyelet.",
+    model: "/models/anne-keychain.glb",
+    productSlug: "customize-keychain-name",
+  },
+  {
     id: "spotify",
     title: "Spotify Bar code",
     shortName: "Spotify Bar code",

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { siteName, siteUrl } from "@/lib/site";
+import { facebookUrl, siteName, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const sans = Geist({
@@ -36,8 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     url: siteUrl(),
     description: "Custom 3D printed keychains, personalized objects, and small-run printing.",
     email: "depthanddot@gmail.com",
-    telephone: "+639388528698",
+    telephone: "+639700981948",
     logo: `${siteUrl()}/depth%26dot.svg`,
+    sameAs: [facebookUrl],
   };
 
   return (

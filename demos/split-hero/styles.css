@@ -1,0 +1,137 @@
+:root {
+  --ink: #1a1a1a;
+  --muted: #6e6e6e;
+  --line: #e4e4e4;
+  --paper: #ffffff;
+  --ease-wipe: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+.split-hero {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  width: min(1180px, calc(100% - 2.5rem));
+  min-height: min(100vh, 760px);
+  margin-inline: auto;
+  padding-block: clamp(2rem, 6vw, 5rem);
+}
+
+.split-hero__eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.split-hero__title {
+  margin: 0;
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  font-weight: 520;
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.split-hero__lead {
+  max-width: 30rem;
+  margin: 1.25rem 0 0;
+  font-size: 1.08rem;
+  color: #444;
+}
+
+.split-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.split-hero__button {
+  padding: 0.8rem 1.3rem;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.split-hero__button--quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.split-hero__media {
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
+  background: #f2f2f2;
+  clip-path: inset(0 0 0 0 round 20px);
+}
+
+.split-hero__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The hidden start state only applies when scripting can reveal it and motion is welcome,
+   so reduced-motion users and no-JS visitors always see the final layout. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .split-hero__media {
+    clip-path: inset(0 0 0 100% round 20px);
+    transition: clip-path 900ms var(--ease-wipe);
+  }
+
+  .js .split-hero__media img {
+    transform: scale(1.3);
+    transition: transform 900ms var(--ease-wipe);
+  }
+
+  .js .split-hero__copy {
+    opacity: 0;
+    transform: translateX(-12px);
+    transition:
+      opacity 900ms var(--ease-wipe) 120ms,
+      transform 900ms var(--ease-wipe) 120ms;
+  }
+
+  .js .split-hero.is-revealed .split-hero__media {
+    clip-path: inset(0 0 0 0 round 20px);
+  }
+
+  .js .split-hero.is-revealed .split-hero__media img {
+    transform: scale(1);
+  }
+
+  .js .split-hero.is-revealed .split-hero__copy {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .split-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: 2rem;
+  }
+
+  .split-hero__media {
+    order: -1;
+  }
+}
