@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { InquiryForm } from "@/components/inquiry-form";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
-export const metadata: Metadata = {
-  title: "Inquire",
-  description: "Ask Depth & Dot about a custom 3D print or a small print run.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Order a custom keychain or 3D print",
+  description:
+    "Ask Depth & Dot for a quote on a custom name keychain, Spotify code keychain, name magnet, event favors, or a small print run. Tell us the piece, the words on it, and how many you need.",
+  path: "/inquire",
+});
 
 export default function InquirePage() {
   return (

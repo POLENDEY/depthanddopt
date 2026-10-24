@@ -1,9 +1,8 @@
-import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readSession, sessionCookie } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { addReply, getInquiry } from "@/lib/inquiry-store";
 import { sendMail } from "@/lib/mail";
 
 const schema = z.object({
@@ -19,23 +18,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!parsed.success) return NextResponse.json({ error: "Write a subject and a message." }, { status: 400 });
 
   const { id } = await context.params;
-  const inquiry = await db().query<{ email: string; name: string }>(
-    "SELECT email, name FROM depth_dot.inquiries WHERE id = $1",
-    [id],
-  );
-  const row = inquiry.rows[0];
-  if (!row) return NextResponse.json({ error: "Inquiry not found." }, { status: 404 });
+  const inquiry = await getInquiry(id);
+  if (!inquiry) return NextResponse.json({ error: "Inquiry not found." }, { status: 404 });
 
   await sendMail({
-    to: row.email,
+    to: inquiry.email,
     subject: parsed.data.subject,
     text: `${parsed.data.body}\n\n— Depth & Dot`,
   });
-  await db().query(
-    "INSERT INTO depth_dot.inquiry_replies (id, inquiry_id, subject, body) VALUES ($1, $2, $3, $4)",
-    [randomUUID(), id, parsed.data.subject, parsed.data.body],
-  );
-  await db().query("UPDATE depth_dot.inquiries SET status = 'replied' WHERE id = $1", [id]);
+  await addReply(inquiry, parsed.data.subject, parsed.data.body);
 
   return NextResponse.json({ ok: true });
 }

@@ -9,6 +9,7 @@ type Slide = {
   image: string;
   srcSet?: string;
   position?: string;
+  alt?: string;
   href: string;
 };
 
@@ -17,9 +18,10 @@ const slides: Slide[] = [
     kicker: "3D print",
     title: "Keychains with a name",
     text: "A small tag, a ring, and the letters you want to carry.",
-    image: "/images/banner-keychain-letter.webp",
-    srcSet: "/images/banner-keychain-letter-1200.webp 1200w, /images/banner-keychain-letter.webp 2240w",
+    image: "/images/banner-keychains.webp",
+    srcSet: "/images/banner-keychains-1200.webp 1200w, /images/banner-keychains.webp 2240w",
     position: "80% 50%",
+    alt: "Two custom 3D printed Spotify code keychains with the names PAUL and TRIXIA",
     href: "/product/c/3d-print",
   },
   {
@@ -69,7 +71,7 @@ export function BannerSlider() {
               srcSet={slide.srcSet}
               sizes={slide.srcSet ? "(max-width: 1160px) 100vw, 1120px" : undefined}
               style={slide.position ? { objectPosition: slide.position } : undefined}
-              alt=""
+              alt={slide.alt ?? ""}
               width={1600}
               height={700}
               fetchPriority={slideIndex === 0 ? "high" : undefined}

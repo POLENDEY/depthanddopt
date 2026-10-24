@@ -23,6 +23,7 @@ export type StudioInquiry = {
   message: string;
   status: string;
   created_at: string;
+  store?: "primary" | "atlas";
   replies: StudioReply[];
 };
 
@@ -100,7 +101,10 @@ export function StudioTabs({ inquiries }: { inquiries: StudioInquiry[] }) {
                     {item.source_label || "Inquire form"}
                     {item.source_path ? <div className="note">{item.source_path}</div> : null}
                   </td>
-                  <td className="status">{item.status}</td>
+                  <td className="status">
+                    {item.status}
+                    {item.store === "atlas" ? <div className="note">Atlas</div> : null}
+                  </td>
                   <td>{new Date(item.created_at).toLocaleString()}</td>
                 </tr>
               ))}

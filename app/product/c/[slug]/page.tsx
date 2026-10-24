@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumb";
+import { JsonLd } from "@/components/json-ld";
 import { categories, getCategory, productsInCategory } from "@/lib/products";
+import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
@@ -14,7 +17,12 @@ export function generateMetadata({ params }: { params: Promise<{ slug: string }>
   return params.then(({ slug }) => {
     const category = getCategory(slug);
     if (!category) return { title: "Product" };
-    return { title: `${category.title} · Products`, description: category.summary };
+    const items = productsInCategory(category.title);
+    return pageMetadata({
+      title: `${categoryPhrase[category.title]} collection`,
+      description: `${category.summary} Browse ${items.map((item) => item.title).join(", ")}. ${shippingNote}`,
+      path: `/product/c/${category.slug}`,
+    });
   });
 }
 
@@ -24,9 +32,27 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   if (!category) notFound();
   const items = productsInCategory(category.title);
   const otherCategories = categories.filter((c) => c.slug !== category.slug);
+  const base = siteUrl();
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${category.title} collection`,
+    description: category.summary,
+    url: `${base}/product/c/${category.slug}`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${base}/product/${item.slug}`,
+        name: item.title,
+      })),
+    },
+  };
 
   return (
     <section className="wrap page aesthetic-category-page">
+      <JsonLd data={schema} />
       <Breadcrumbs
         items={[
           { label: "Index", href: "/" },

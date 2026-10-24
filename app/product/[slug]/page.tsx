@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumb";
+import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
 import { getProduct, getCategorySlug, getRelatedProducts, products } from "@/lib/products";
+import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
+import { siteName, siteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
@@ -15,7 +18,14 @@ export function generateMetadata({ params }: { params: Promise<{ slug: string }>
   return params.then(({ slug }) => {
     const product = getProduct(slug);
     if (!product) return { title: "Product" };
-    return { title: `${product.title} · Products`, description: product.summary };
+    return pageMetadata({
+      title: `${product.title} · ${categoryPhrase[product.category]}`,
+      description: `${product.description} ${shippingNote}`,
+      path: `/product/${product.slug}`,
+      keywords: [
+        ...new Set([product.title, ...product.pieces.map((piece) => piece.title), categoryPhrase[product.category], "Philippines"]),
+      ],
+    });
   });
 }
 
@@ -25,9 +35,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
   const categorySlug = getCategorySlug(product.category);
   const related = getRelatedProducts(product.slug, 3);
+  const base = siteUrl();
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: `${product.description} ${shippingNote}`,
+    url: `${base}/product/${product.slug}`,
+    image: [`${base}${product.image}`],
+    category: product.category,
+    brand: { "@type": "Brand", name: siteName },
+    manufacturer: { "@id": `${base}/#business` },
+    additionalProperty: product.details.map((detail) => ({ "@type": "PropertyValue", name: "Feature", value: detail })),
+  };
 
   return (
     <article className="wrap page aesthetic-product-detail-page">
+      <JsonLd data={schema} />
       <Breadcrumbs
         items={[
           { label: "Index", href: "/" },
@@ -117,7 +141,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {related.map((item) => (
               <article className="aesthetic-card" key={item.slug}>
                 <Link href={`/product/${item.slug}`} className="card-image-wrap">
-                  <img src={item.image} alt="" width={800} height={800} loading="lazy" className="card-image" />
+                  <img src={item.image} alt={item.title} width={800} height={800} loading="lazy" className="card-image" />
                   <span className="card-badge">{item.category}</span>
                 </Link>
                 <div className="card-meta">

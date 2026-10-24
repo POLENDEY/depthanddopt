@@ -1,7 +1,6 @@
-import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { createInquiry } from "@/lib/inquiry-store";
 import { sendMail } from "@/lib/mail";
 import { products } from "@/lib/products";
 import { limit } from "@/lib/rate-limit";
@@ -34,22 +33,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Choose a piece from the list." }, { status: 400 });
   }
 
-  const id = randomUUID();
   const phone = parsed.data.phone || null;
-  await db().query(
-    `INSERT INTO depth_dot.inquiries (id, name, email, phone, interest, message, source_label, source_path)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      id,
-      parsed.data.name,
-      parsed.data.email,
+  let id: string;
+  try {
+    ({ id } = await createInquiry({
+      name: parsed.data.name,
+      email: parsed.data.email,
       phone,
-      parsed.data.interest,
-      parsed.data.message,
-      parsed.data.sourceLabel,
-      parsed.data.sourcePath,
-    ],
-  );
+      interest: parsed.data.interest,
+      message: parsed.data.message,
+      sourceLabel: parsed.data.sourceLabel,
+      sourcePath: parsed.data.sourcePath,
+    }));
+  } catch (error) {
+    console.error("Inquiry could not be saved.", error);
+    return NextResponse.json(
+      { error: "We could not save your inquiry right now. Please try again, or message us on Messenger." },
+      { status: 503 },
+    );
+  }
 
   const notify = process.env.INQUIRY_NOTIFY_TO || process.env.SMTP_USER;
   if (notify) {
@@ -58,8 +60,8 @@ export async function POST(request: Request) {
       replyTo: parsed.data.email,
       subject: `New inquiry from ${parsed.data.name}`,
       text: `${parsed.data.name} <${parsed.data.email}>${phone ? `\n${phone}` : ""}\nProduct: ${parsed.data.interest}\nCame from: ${parsed.data.sourceLabel} (${parsed.data.sourcePath})\n\n${parsed.data.message}`,
-    });
+    }).catch((error) => console.error("Inquiry notification email failed.", error));
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, reference: id.slice(0, 8).toUpperCase() });
 }

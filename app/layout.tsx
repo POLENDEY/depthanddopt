@@ -1,8 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { JsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { facebookUrl, siteName, siteUrl } from "@/lib/site";
+import {
+  contactEmail,
+  contactPhone,
+  facebookUrl,
+  messengerUrl,
+  ogImage,
+  siteDescription,
+  siteKeywords,
+  siteName,
+  siteTagline,
+  siteUrl,
+} from "@/lib/site";
 import "./globals.css";
 
 const sans = Geist({
@@ -14,37 +26,91 @@ const sans = Geist({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: `${siteName} · 3D printed objects`,
+    default: `${siteName} · ${siteTagline}`,
     template: `%s · ${siteName}`,
   },
-  description:
-    "Depth & Dot makes custom 3D printed keychains, personal objects, and small-run printing. A studio portfolio. Inquire for a piece.",
+  description: siteDescription,
+  keywords: siteKeywords,
   applicationName: siteName,
+  authors: [{ name: siteName, url: siteUrl() }],
+  creator: siteName,
+  publisher: siteName,
+  category: "shopping",
+  alternates: { canonical: "/" },
+  formatDetection: { telephone: true, email: true, address: false },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
   openGraph: {
     type: "website",
+    locale: "en_PH",
     siteName,
-    title: siteName,
-    description: "Custom 3D printed keychains, personal objects, and small-run printing.",
+    url: "/",
+    title: `${siteName} · ${siteTagline}`,
+    description: siteDescription,
+    images: [ogImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteName} · ${siteTagline}`,
+    description: siteDescription,
+    images: [ogImage.url],
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0d0d0d",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const jsonLd = {
+  const base = siteUrl();
+  const business = {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "Store",
+    "@id": `${base}/#business`,
     name: siteName,
-    url: siteUrl(),
-    description: "Custom 3D printed keychains, personalized objects, and small-run printing.",
-    email: "depthanddot@gmail.com",
-    telephone: "+639700981948",
-    logo: `${siteUrl()}/depth%26dot.svg`,
+    url: base,
+    description: siteDescription,
+    email: contactEmail,
+    telephone: contactPhone,
+    logo: `${base}/icon-512.png`,
+    image: `${base}${ogImage.url}`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Quezon City",
+      addressRegion: "Metro Manila",
+      addressCountry: "PH",
+    },
+    areaServed: { "@type": "Country", name: "Philippines" },
+    knowsAbout: ["3D printing", "Custom keychains", "Spotify code keychains", "Personalized gifts"],
     sameAs: [facebookUrl],
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer service",
+      email: contactEmail,
+      telephone: contactPhone,
+      url: messengerUrl,
+      areaServed: "PH",
+      availableLanguage: ["English", "Filipino"],
+    },
+  };
+  const website = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${base}/#website`,
+    name: siteName,
+    url: base,
+    inLanguage: "en-PH",
+    publisher: { "@id": `${base}/#business` },
   };
 
   return (
-    <html lang="en" className={sans.variable}>
+    <html lang="en-PH" className={sans.variable}>
       <body>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <JsonLd data={business} />
+        <JsonLd data={website} />
         <SiteHeader />
         <main id="content">{children}</main>
         <SiteFooter />

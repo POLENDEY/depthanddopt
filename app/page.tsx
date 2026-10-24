@@ -3,7 +3,8 @@ import { BannerSlider } from "@/components/banner-slider";
 import { BusinessCard } from "@/components/business-card";
 import { FacebookIcon } from "@/components/facebook-icon";
 import { categories } from "@/lib/products";
-import { facebookUrl } from "@/lib/site";
+import { MessengerIcon } from "@/components/messenger-icon";
+import { facebookUrl, messengerUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
@@ -64,6 +65,9 @@ export default function HomePage() {
             <div className="hero-socials">
               <a href={facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Depth & Dot on Facebook (opens in a new tab)">
                 <FacebookIcon size={20} />
+              </a>
+              <a href={messengerUrl} target="_blank" rel="noopener noreferrer" aria-label="Chat with Depth & Dot on Messenger (opens in a new tab)">
+                <MessengerIcon size={20} />
               </a>
               <a href="mailto:depthanddot@gmail.com" aria-label="Email Depth & Dot">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

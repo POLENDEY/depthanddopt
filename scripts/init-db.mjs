@@ -81,6 +81,13 @@ await client.query(
 );
 await client.query("ALTER TABLE depth_dot.inquiries ADD COLUMN IF NOT EXISTS source_label text");
 await client.query("ALTER TABLE depth_dot.inquiries ADD COLUMN IF NOT EXISTS source_path text");
+await client.query(`
+  CREATE TABLE IF NOT EXISTS depth_dot.app_settings (
+    key text PRIMARY KEY,
+    value text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )
+`);
 
 const check = await client.query(
   "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'depth_dot' ORDER BY table_name",

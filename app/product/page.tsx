@@ -3,18 +3,40 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/breadcrumb";
 import { ObjectReel } from "@/components/object-reel";
 import { ProductCatalog } from "@/components/product-catalog";
+import { JsonLd } from "@/components/json-ld";
 import { categories, products } from "@/lib/products";
+import { pageMetadata, shippingNote } from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-export const metadata: Metadata = {
-  title: "Products & Objects",
-  description: "Browse custom 3D printed keychains, personal objects, and studio goods from Depth & Dot.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Custom keychains & 3D printed gifts",
+  description: `Browse custom 3D printed name keychains, Spotify code keychains, articulated names, name magnets, bag charms, name plates, event favors, cards, and stickers. ${shippingNote}`,
+  path: "/product",
+});
 
 export default function ProductIndexPage() {
+  const base = siteUrl();
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Products & Objects",
+    url: `${base}/product`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: products.map((product, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${base}/product/${product.slug}`,
+        name: product.title,
+      })),
+    },
+  };
+
   return (
     <>
+      <JsonLd data={schema} />
       <section className="hero catalog-hero" aria-label="Catalog introduction and 3D preview">
         <div className="wrap catalog-hero-inner">
           <div className="hero-copy">

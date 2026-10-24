@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
-export const metadata: Metadata = {
-  title: "About",
-  description: "Depth & Dot is a small studio for custom 3D prints and other printing.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "About the studio",
+  description:
+    "Depth & Dot is a small 3D printing studio in Quezon City making custom keychains, personalized gifts, and short print runs for people, events, and small shops across the Philippines.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (
@@ -14,7 +17,7 @@ export default function AboutPage() {
       <img
         className="about-banner"
         src="/images/cover.webp"
-        alt=""
+        alt="A low-poly 3D printed figure breaking out of a white wall"
         width={1600}
         height={640}
         fetchPriority="high"

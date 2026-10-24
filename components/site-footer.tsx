@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { FacebookIcon } from "@/components/facebook-icon";
-import { facebookUrl } from "@/lib/site";
+import { MessengerIcon } from "@/components/messenger-icon";
+import { facebookUrl, messengerUrl } from "@/lib/site";
 
 export function SiteFooter() {
   function scrollToTop() {
@@ -39,6 +40,7 @@ export function SiteFooter() {
             <a href="mailto:depthanddot@gmail.com">depthanddot@gmail.com</a>
             <a href="tel:+639700981948">+63 970 098 1948</a>
             <a href={facebookUrl} target="_blank" rel="noopener noreferrer">Facebook</a>
+            <a href={messengerUrl} target="_blank" rel="noopener noreferrer">Messenger</a>
           </address>
         </div>
 
@@ -58,6 +60,15 @@ export function SiteFooter() {
               aria-label="Depth & Dot on Facebook (opens in a new tab)"
             >
               <FacebookIcon size={20} />
+            </a>
+            <a
+              className="footer-social"
+              href={messengerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Chat with Depth & Dot on Messenger (opens in a new tab)"
+            >
+              <MessengerIcon size={20} />
             </a>
           </div>
         </div>
