@@ -89,6 +89,35 @@ await client.query(`
   )
 `);
 
+await client.query(`
+  CREATE TABLE IF NOT EXISTS depth_dot.product_photos (
+    id uuid PRIMARY KEY,
+    product_slug text NOT NULL,
+    url text NOT NULL,
+    storage_path text NOT NULL,
+    style text NOT NULL DEFAULT 'white' CHECK (style IN ('white', 'raw')),
+    sort_order integer NOT NULL DEFAULT 0,
+    width integer,
+    height integer,
+    bytes integer,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )
+`);
+await client.query(
+  "CREATE INDEX IF NOT EXISTS product_photos_slug_order_idx ON depth_dot.product_photos (product_slug, sort_order)",
+);
+await client.query("ALTER TABLE depth_dot.product_photos ADD COLUMN IF NOT EXISTS alt text");
+await client.query("ALTER TABLE depth_dot.product_photos ADD COLUMN IF NOT EXISTS published boolean NOT NULL DEFAULT true");
+await client.query(`
+  CREATE TABLE IF NOT EXISTS depth_dot.product_content (
+    product_slug text PRIMARY KEY,
+    draft jsonb,
+    published jsonb,
+    draft_updated_at timestamptz,
+    published_at timestamptz
+  )
+`);
+
 const check = await client.query(
   "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'depth_dot' ORDER BY table_name",
 );
@@ -97,3 +126,29 @@ for (const row of check.rows) console.log(`- ${row.table_schema}.${row.table_nam
 console.log("Existing public tables were not modified.");
 
 await client.end();
+
+const bucket = env.PRODUCT_PHOTO_BUCKET || "depth-dot-products";
+if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+  const storage = `${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "")}/storage/v1`;
+  const headers = {
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    "Content-Type": "application/json",
+  };
+  const settings = {
+    public: true,
+    file_size_limit: 5 * 1024 * 1024,
+    allowed_mime_types: ["image/webp"],
+  };
+  const existing = await fetch(`${storage}/bucket/${bucket}`, { headers });
+  const response = existing.ok
+    ? await fetch(`${storage}/bucket/${bucket}`, { method: "PUT", headers, body: JSON.stringify({ id: bucket, ...settings }) })
+    : await fetch(`${storage}/bucket`, { method: "POST", headers, body: JSON.stringify({ id: bucket, name: bucket, ...settings }) });
+  console.log(
+    response.ok
+      ? `Storage bucket "${bucket}" is ready (public, WebP only, 5 MB max).`
+      : `Storage bucket "${bucket}" could not be prepared: ${response.status} ${await response.text()}`,
+  );
+} else {
+  console.log("NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing, so the photo bucket was not created.");
+}

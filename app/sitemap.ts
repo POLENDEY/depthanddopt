@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
-import { categories, products } from "@/lib/products";
+import { liveProducts } from "@/lib/product-content";
+import { categories } from "@/lib/products";
 import { siteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
+  const products = await liveProducts();
   return [
     {
       url: base,
@@ -26,9 +28,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     ...products.map((product) => ({
       url: `${base}/product/${product.slug}`,
-      lastModified: now,
+      lastModified: product.updatedAt ? new Date(product.updatedAt) : now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
+      images: product.photos.length ? product.photos.map((photo) => photo.url) : undefined,
     })),
   ];
 }

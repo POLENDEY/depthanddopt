@@ -4,7 +4,8 @@ import { Breadcrumbs } from "@/components/breadcrumb";
 import { ObjectReel } from "@/components/object-reel";
 import { ProductCatalog } from "@/components/product-catalog";
 import { JsonLd } from "@/components/json-ld";
-import { categories, products } from "@/lib/products";
+import { liveProducts } from "@/lib/product-content";
+import { categories } from "@/lib/products";
 import { pageMetadata, shippingNote } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
@@ -16,7 +17,8 @@ export const metadata: Metadata = pageMetadata({
   path: "/product",
 });
 
-export default function ProductIndexPage() {
+export default async function ProductIndexPage() {
+  const catalog = await liveProducts();
   const base = siteUrl();
   const schema = {
     "@context": "https://schema.org",
@@ -25,7 +27,7 @@ export default function ProductIndexPage() {
     url: `${base}/product`,
     mainEntity: {
       "@type": "ItemList",
-      itemListElement: products.map((product, index) => ({
+      itemListElement: catalog.map((product, index) => ({
         "@type": "ListItem",
         position: index + 1,
         url: `${base}/product/${product.slug}`,
@@ -87,10 +89,10 @@ export default function ProductIndexPage() {
         <section className="aesthetic-directory-section" aria-label="Product directory">
           <div className="aesthetic-section-head">
             <h2 className="aesthetic-section-title">Directory</h2>
-            <span className="aesthetic-section-count">{products.length} items</span>
+            <span className="aesthetic-section-count">{catalog.length} items</span>
           </div>
 
-          <ProductCatalog products={products} categories={categories} />
+          <ProductCatalog products={catalog} categories={categories} />
         </section>
       </div>
     </>

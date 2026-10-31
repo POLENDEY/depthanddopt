@@ -10,6 +10,7 @@
     "db:init-atlas": "node scripts/init-atlas.mjs"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "jose": "^6.1.0",
     "mongodb": "^6.21.0",
     "next": "^15.5.4",

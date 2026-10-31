@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumb";
 import { JsonLd } from "@/components/json-ld";
+import { liveProducts } from "@/lib/product-content";
 import { categories, getCategory, productsInCategory } from "@/lib/products";
 import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
@@ -30,7 +31,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const category = getCategory(slug);
   if (!category) notFound();
-  const items = productsInCategory(category.title);
+  const items = await liveProducts(productsInCategory(category.title));
   const otherCategories = categories.filter((c) => c.slug !== category.slug);
   const base = siteUrl();
   const schema = {

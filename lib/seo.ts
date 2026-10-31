@@ -15,12 +15,15 @@ export function pageMetadata({
   description,
   path,
   keywords,
+  image,
 }: {
   title: string;
   description: string;
   path: string;
   keywords?: string[];
+  image?: { url: string; width?: number; height?: number; alt: string };
 }): Metadata {
+  const shareImage = image ?? ogImage;
   return {
     title,
     description,
@@ -33,13 +36,13 @@ export function pageMetadata({
       url: path,
       title: `${title} · ${siteName}`,
       description,
-      images: [ogImage],
+      images: [shareImage],
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} · ${siteName}`,
       description,
-      images: [ogImage.url],
+      images: [shareImage.url],
     },
   };
 }

@@ -1,4 +1,5 @@
 import { StoragePanel } from "@/components/storage-panel";
+import { StudioNav } from "@/components/studio-nav";
 import { StudioTabs } from "@/components/studio-tabs";
 import { listInquiries } from "@/lib/inquiry-store";
 import { storageStatus } from "@/lib/storage";
@@ -12,9 +13,7 @@ export default async function StudioPage() {
     <section className="wrap page">
       <p className="eyebrow">Private</p>
       <h1>Studio</h1>
-      <form action="/api/admin/logout" method="post">
-        <button className="button secondary" type="submit">Sign out</button>
-      </form>
+      <StudioNav current="/studio" />
       <StoragePanel status={status} />
       {primaryError ? (
         <p className="error" role="status">

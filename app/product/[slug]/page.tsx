@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumb";
 import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
-import { getProduct, getCategorySlug, getRelatedProducts, products } from "@/lib/products";
+import { ProductPhotos } from "@/components/product-photos";
+import { liveProduct, liveProducts } from "@/lib/product-content";
+import { getCategorySlug, getRelatedProducts, products } from "@/lib/products";
 import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
 import { siteName, siteUrl } from "@/lib/site";
 
@@ -14,35 +16,44 @@ export function generateStaticParams() {
   return products.map((product) => ({ slug: product.slug }));
 }
 
-export function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  return params.then(({ slug }) => {
-    const product = getProduct(slug);
-    if (!product) return { title: "Product" };
-    return pageMetadata({
-      title: `${product.title} · ${categoryPhrase[product.category]}`,
-      description: `${product.description} ${shippingNote}`,
-      path: `/product/${product.slug}`,
-      keywords: [
-        ...new Set([product.title, ...product.pieces.map((piece) => piece.title), categoryPhrase[product.category], "Philippines"]),
-      ],
-    });
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await liveProduct(slug);
+  if (!product) return { title: "Product" };
+  const cover = product.photos[0];
+  return pageMetadata({
+    title: product.seoTitle || `${product.title} · ${categoryPhrase[product.category]}`,
+    description: product.seoDescription || `${product.description} ${shippingNote}`,
+    path: `/product/${product.slug}`,
+    keywords: [
+      ...new Set([
+        ...product.keywords,
+        product.title,
+        ...product.pieces.map((piece) => piece.title),
+        categoryPhrase[product.category],
+        "Philippines",
+      ]),
+    ],
+    image: cover ? { url: cover.url, width: cover.width ?? undefined, height: cover.height ?? undefined, alt: cover.alt } : undefined,
   });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await liveProduct(slug);
   if (!product) notFound();
   const categorySlug = getCategorySlug(product.category);
-  const related = getRelatedProducts(product.slug, 3);
+  const related = await liveProducts(getRelatedProducts(product.slug, 3));
+  const photos = product.photos;
   const base = siteUrl();
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.title,
-    description: `${product.description} ${shippingNote}`,
+    description: product.seoDescription || `${product.description} ${shippingNote}`,
     url: `${base}/product/${product.slug}`,
-    image: [`${base}${product.image}`],
+    image: photos.length ? photos.map((photo) => photo.url) : [`${base}${product.image}`],
+    ...(product.keywords.length ? { keywords: product.keywords.join(", ") } : {}),
     category: product.category,
     brand: { "@type": "Brand", name: siteName },
     manufacturer: { "@id": `${base}/#business` },
@@ -86,6 +97,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </Link>
         </div>
       </header>
+
+      {photos.length > 0 && (
+        <section className="aesthetic-variations-section" aria-label={`${product.title} photos`}>
+          <div className="aesthetic-section-head">
+            <h2 className="aesthetic-section-title">Photos</h2>
+            <span className="aesthetic-section-count">
+              {photos.length} {photos.length === 1 ? "photo" : "photos"}
+            </span>
+          </div>
+          <ProductPhotos
+            title={product.title}
+            photos={photos}
+          />
+        </section>
+      )}
 
       {/* Variations & Styles Gallery Section */}
       <section className="aesthetic-variations-section" aria-label="Product variations gallery">
