@@ -106,9 +106,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     publisher: { "@id": `${base}/#business` },
   };
 
+  // Form-filling browser extensions tag fields with these attributes before React hydrates,
+  // which the dev overlay reports as a hydration mismatch.
+  const stripExtensionAttributes = `(() => {
+  const names = ["fdprocessedid", "data-lastpass-icon-root", "data-com-onepassword-filled", "data-dashlane-rid", "data-ms-editor"];
+  const strip = (node) => names.forEach((name) => node.removeAttribute && node.hasAttribute(name) && node.removeAttribute(name));
+  const observer = new MutationObserver((records) => records.forEach((record) => strip(record.target)));
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: names, subtree: true });
+  addEventListener("load", () => setTimeout(() => observer.disconnect(), 10000));
+})();`;
+
   return (
     <html lang="en-PH" className={sans.variable}>
       <body>
+        {process.env.NODE_ENV === "development" ? (
+          <script dangerouslySetInnerHTML={{ __html: stripExtensionAttributes }} />
+        ) : null}
         <JsonLd data={business} />
         <JsonLd data={website} />
         <SiteHeader />

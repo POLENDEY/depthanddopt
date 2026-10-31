@@ -37,6 +37,19 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
   });
 }
 
+const targetBytes = 450 * 1024;
+
+/** Highest WebP quality that stays under the target size, so photos look crisp but load fast. */
+async function encodeWebp(canvas: HTMLCanvasElement) {
+  let blob = await toBlob(canvas, "image/webp", 0.93);
+  for (const quality of [0.88, 0.82, 0.76]) {
+    if (blob.size <= targetBytes) break;
+    blob = await toBlob(canvas, "image/webp", quality);
+  }
+  if (blob.type !== "image/webp") throw new Error("This browser cannot save WebP images. Try Chrome or Edge.");
+  return blob;
+}
+
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
@@ -46,32 +59,140 @@ function loadImage(src: string) {
   });
 }
 
-/** Shrinks the mask slightly and makes it fully solid, so no halo from the old background is left. */
-function hardenAlpha(data: Uint8ClampedArray, width: number, height: number) {
-  const alpha = new Uint8Array(width * height);
-  for (let p = 0, i = 3; p < alpha.length; p++, i += 4) alpha[p] = data[i];
-  const radius = 2;
+/**
+ * Cleans the cutout mask: trims the halo by one pixel, tightens the soft edge into a crisp
+ * anti-aliased one, drops stray specks, and replaces edge colors tinted by the old background.
+ */
+function refineMatte(data: Uint8ClampedArray, width: number, height: number) {
+  const total = width * height;
+  const raw = new Uint8Array(total);
+  for (let p = 0, i = 3; p < total; p++, i += 4) raw[p] = data[i];
+
+  const alpha = new Uint8Array(total);
+  const lo = 70;
+  const hi = 190;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       let min = 255;
-      for (let dy = -radius; dy <= radius && min > 0; dy++) {
+      for (let dy = -1; dy <= 1; dy++) {
         const ny = y + dy;
-        if (ny < 0 || ny >= height) {
-          min = 0;
-          break;
-        }
-        for (let dx = -radius; dx <= radius; dx++) {
+        for (let dx = -1; dx <= 1; dx++) {
           const nx = x + dx;
-          const value = nx < 0 || nx >= width ? 0 : alpha[ny * width + nx];
+          const value = nx < 0 || ny < 0 || nx >= width || ny >= height ? 0 : raw[ny * width + nx];
           if (value < min) min = value;
         }
       }
-      const i = (y * width + x) * 4;
-      const solid = min >= 96;
-      data[i + 3] = solid ? 255 : 0;
-      if (!solid) data[i] = data[i + 1] = data[i + 2] = 255;
+      const t = Math.min(1, Math.max(0, (min - lo) / (hi - lo)));
+      alpha[y * width + x] = Math.round(t * t * (3 - 2 * t) * 255);
     }
   }
+
+  const label = new Int32Array(total);
+  const sizes = [0];
+  const stack = new Int32Array(total);
+  for (let start = 0; start < total; start++) {
+    if (alpha[start] < 128 || label[start]) continue;
+    const id = sizes.length;
+    let size = 0;
+    let top = 0;
+    stack[top++] = start;
+    label[start] = id;
+    while (top) {
+      const p = stack[--top];
+      size++;
+      const x = p % width;
+      const neighbors = [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p - width, p + width];
+      for (const n of neighbors) {
+        if (n < 0 || n >= total || label[n] || alpha[n] < 128) continue;
+        label[n] = id;
+        stack[top++] = n;
+      }
+    }
+    sizes.push(size);
+  }
+  const largest = Math.max(0, ...sizes);
+  const minSize = Math.max(64, Math.min(largest * 0.02, total * 0.0008));
+  const keep = (id: number) => id > 0 && sizes[id] >= minSize;
+
+  const near = 3;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const i = p * 4;
+      const a = alpha[p];
+      if (a >= 128) {
+        data[i + 3] = keep(label[p]) ? a : 0;
+        if (data[i + 3] === 255 || data[i + 3] === 0) continue;
+      } else {
+        data[i + 3] = a;
+        if (a === 0) continue;
+      }
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let n = 0;
+      for (let dy = -near; dy <= near; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        for (let dx = -near; dx <= near; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          const q = ny * width + nx;
+          if (alpha[q] !== 255 || !keep(label[q])) continue;
+          const j = q * 4;
+          r += data[j];
+          g += data[j + 1];
+          b += data[j + 2];
+          n++;
+        }
+      }
+      if (!n) {
+        data[i + 3] = 0;
+        continue;
+      }
+      data[i] = r / n;
+      data[i + 1] = g / n;
+      data[i + 2] = b / n;
+    }
+  }
+  for (let p = 0, i = 3; p < total; p++, i += 4) if (data[i] === 0) data[i - 3] = data[i - 2] = data[i - 1] = 255;
+}
+
+/** Light unsharp mask to restore detail softened by the cutout and resizing. */
+function sharpen(ctx: CanvasRenderingContext2D, box: { x: number; y: number; w: number; h: number }, amount = 0.45, threshold = 3) {
+  const x0 = Math.max(0, Math.floor(box.x) - 2);
+  const y0 = Math.max(0, Math.floor(box.y) - 2);
+  const w = Math.min(ctx.canvas.width - x0, Math.ceil(box.w) + 4);
+  const h = Math.min(ctx.canvas.height - y0, Math.ceil(box.h) + 4);
+  const image = ctx.getImageData(x0, y0, w, h);
+  const src = image.data;
+  const copy = new Uint8ClampedArray(src);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = (y * w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const k = i + c;
+        const blur =
+          (copy[k - w * 4 - 4] + 2 * copy[k - w * 4] + copy[k - w * 4 + 4] +
+            2 * copy[k - 4] + 4 * copy[k] + 2 * copy[k + 4] +
+            copy[k + w * 4 - 4] + 2 * copy[k + w * 4] + copy[k + w * 4 + 4]) / 16;
+        const diff = copy[k] - blur;
+        if (Math.abs(diff) > threshold) src[k] = copy[k] + diff * amount;
+      }
+    }
+  }
+  ctx.putImageData(image, x0, y0);
+}
+
+/** Halves the size in steps so large reductions stay sharp instead of aliased. */
+function downscale(source: HTMLCanvasElement, width: number, height: number) {
+  let current = source;
+  while (current.width / 2 >= width && current.height / 2 >= height) {
+    const half = blankCanvas(current.width / 2, current.height / 2);
+    context(half).drawImage(current, 0, 0, half.width, half.height);
+    current = half;
+  }
+  return current;
 }
 
 function opaqueBounds(data: Uint8ClampedArray, width: number, height: number) {
@@ -184,7 +305,7 @@ async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress
   const cutout = await canvasFromBlob(cutoutBlob);
   const cutoutCtx = context(cutout);
   const pixels = cutoutCtx.getImageData(0, 0, cutout.width, cutout.height);
-  hardenAlpha(pixels.data, cutout.width, cutout.height);
+  refineMatte(pixels.data, cutout.width, cutout.height);
   cutoutCtx.putImageData(pixels, 0, 0);
 
   const tilt = levelDegrees(pixels.data, cutout.width, cutout.height);
@@ -201,18 +322,20 @@ async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress
   const fit = Math.min((outputSize * 0.74) / product.width, (outputSize * 0.74) / product.height);
   const dw = product.width * fit;
   const dh = product.height * fit;
-  ctx.drawImage(product, (outputSize - dw) / 2, (outputSize - dh) / 2 - outputSize * 0.02, dw, dh);
+  const box = { x: (outputSize - dw) / 2, y: (outputSize - dh) / 2 - outputSize * 0.02, w: dw, h: dh };
+  ctx.drawImage(fit < 1 ? downscale(product, dw, dh) : product, box.x, box.y, dw, dh);
+  sharpen(ctx, box, fit > 1.4 ? 0.6 : 0.45);
   await stampWatermark(ctx, outputSize, outputSize);
 
   onProgress?.({ text: "Encoding", percent: 88 });
-  const blob = await toBlob(out, "image/webp", 0.92);
+  const blob = await encodeWebp(out);
   return { file: new File([blob], "photo.webp", { type: "image/webp" }), width: outputSize, height: outputSize };
 }
 
 async function rawPhoto(file: File, onProgress?: (update: PrepProgress) => void): Promise<PreparedPhoto> {
   onProgress?.({ text: "Resizing and converting to WebP", percent: 40 });
   const canvas = await canvasFromBlob(file, outputSize);
-  const blob = await toBlob(canvas, "image/webp", 0.9);
+  const blob = await encodeWebp(canvas);
   return { file: new File([blob], "photo.webp", { type: "image/webp" }), width: canvas.width, height: canvas.height };
 }
 

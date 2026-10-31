@@ -23,6 +23,7 @@ export default async function StudioProductsPage({ searchParams }: { searchParam
           category: product.category,
           categoryPhrase: categoryPhrase[product.category],
           artwork: product.image,
+          pieces: product.pieces.map(({ slug, title, summary, image }) => ({ slug, title, summary, image })),
           content,
           photos,
           hasUnpublished,

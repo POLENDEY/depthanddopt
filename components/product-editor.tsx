@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProductPreview, type PreviewPiece } from "@/components/product-preview";
 import { preparePhoto, type PhotoStyle } from "@/lib/photo-prep";
 
 export type EditorContent = {
@@ -22,6 +23,7 @@ export type EditorProduct = {
   category: string;
   categoryPhrase: string;
   artwork: string;
+  pieces: PreviewPiece[];
   content: EditorContent;
   photos: EditorPhoto[];
   hasUnpublished: boolean;
@@ -112,15 +114,10 @@ export function ProductEditor({
   const [progress, setProgress] = useState<{ label: string; percent: number } | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [preview, setPreview] = useState<{ index: number; before: boolean } | null>(null);
+  const [pagePreview, setPagePreview] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
-
-  useEffect(() => {
-    setContent(product.content);
-    setSaved(product.photos);
-    setDirty(false);
-  }, [product]);
 
   useEffect(() => () => pendingRef.current.forEach((item) => {
     URL.revokeObjectURL(item.preview);
@@ -162,9 +159,14 @@ export function ProductEditor({
 
   function switchProduct(next: string) {
     if (unsaved && !window.confirm("You have changes that are not saved. Discard them and switch product?")) return;
+    const nextProduct = products.find((item) => item.slug === next);
+    if (!nextProduct) return;
     clearPending();
     setMessage(null);
     setSlug(next);
+    setContent(nextProduct.content);
+    setSaved(nextProduct.photos);
+    setDirty(false);
   }
 
   async function onFiles(files: File[]) {
@@ -265,7 +267,7 @@ export function ProductEditor({
       });
       const data = (await response.json().catch(() => ({}))) as { error?: string; notified?: boolean };
       if (!response.ok) throw new Error(data.error || "Saving failed.");
-      setSaved(photos);
+      setSaved(action === "publish" ? photos.map((photo) => ({ ...photo, published: true })) : photos);
       setDirty(false);
       setMessage({
         text:
@@ -322,9 +324,14 @@ export function ProductEditor({
           </div>
           <div className="editor-status-block">
             <span className={`storage-badge ${status.tone}`}>{status.text}</span>
-            <a className="text-link" href={`/product/${product.slug}`} target="_blank" rel="noreferrer">
-              View live page &rarr;
-            </a>
+            <div className="editor-status-links">
+              <button className="button secondary" type="button" onClick={() => setPagePreview(true)}>
+                Preview
+              </button>
+              <a className="text-link" href={`/product/${product.slug}`} target="_blank" rel="noreferrer">
+                View live page &rarr;
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -531,6 +538,9 @@ export function ProductEditor({
           )}
         </div>
         <div className="editor-savebar-actions">
+          <button className="button secondary" type="button" onClick={() => setPagePreview(true)}>
+            Preview
+          </button>
           <button className="button secondary" type="button" onClick={() => save("draft")} disabled={Boolean(busy) || !unsaved}>
             {busy === "save" ? "Saving" : "Save as draft"}
           </button>
@@ -568,6 +578,30 @@ export function ProductEditor({
           </div>
         ) : null}
       </dialog>
+
+      <ProductPreview
+        open={pagePreview}
+        onClose={() => setPagePreview(false)}
+        title={content.title || product.content.title}
+        summary={content.summary}
+        description={content.description}
+        details={content.details}
+        category={product.category}
+        artwork={product.artwork}
+        pieces={product.pieces}
+        photos={tiles.map((tile, index) =>
+          tile.kind === "saved"
+            ? { ...tile.photo, alt: tile.photo.alt || `${content.title}, photo ${index + 1}` }
+            : {
+                id: tile.item.key,
+                url: tile.item.preview,
+                width: tile.item.width,
+                height: tile.item.height,
+                alt: tile.item.alt || `${content.title}, photo ${index + 1}`,
+              },
+        )}
+        note={unsaved ? "Preview with unsaved changes" : product.hasUnpublished ? "Preview of the saved draft" : "Matches the live page"}
+      />
     </div>
   );
 }
