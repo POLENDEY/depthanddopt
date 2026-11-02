@@ -1,7 +1,7 @@
 import "server-only";
 import { mongo, mongoConfigured } from "@/lib/mongo";
 import { db } from "@/lib/db";
-import { categories as builtInCategories, getProduct, products as builtInProducts, type Product } from "@/lib/products";
+import { categories as builtInCategories, products as builtInProducts, type Product } from "@/lib/products";
 import type { ProductContent } from "@/lib/product-content";
 
 export type ProductStore = "primary" | "atlas";
@@ -20,6 +20,7 @@ type ProductRow = {
 type CategoryRow = { slug: string; title: string; summary: string; image: string };
 
 const customCategoryImage = "/images/desk.svg";
+const deletedBuiltinProductsKey = "deleted_builtin_products";
 
 export function slugify(value: string) {
   return value
@@ -52,7 +53,7 @@ function productFromRow(row: ProductRow, includeDrafts: boolean): Product | null
     description: content.description,
     image: customCategoryImage,
     details: content.details,
-    pieces: [],
+    pieces: (content.pieces ?? []).map((piece) => ({ ...piece, image: customCategoryImage })),
     store: "primary",
     custom: true,
   };
@@ -117,12 +118,18 @@ export async function listCatalogProducts(includeDrafts = false): Promise<Produc
     console.error(`Could not load custom products from ${index === 0 ? "Supabase" : "MongoDB"}.`, result.reason);
     return [];
   });
-  return [...builtInProducts, ...custom];
+  let deleted = new Set<string>();
+  try {
+    const result = await db().query<{ value: string }>("SELECT value FROM depth_dot.app_settings WHERE key = $1", [deletedBuiltinProductsKey]);
+    const slugs = JSON.parse(result.rows[0]?.value ?? "[]") as unknown;
+    if (Array.isArray(slugs)) deleted = new Set(slugs.filter((slug): slug is string => typeof slug === "string"));
+  } catch (error) {
+    console.error("Could not load deleted built-in products.", error);
+  }
+  return [...builtInProducts.filter((product) => !deleted.has(product.slug)), ...custom];
 }
 
 export async function findCatalogProduct(slug: string, includeDrafts = false): Promise<Product | undefined> {
-  const builtIn = getProduct(slug);
-  if (builtIn) return builtIn;
   const products = await listCatalogProducts(includeDrafts);
   return products.find((product) => product.slug === slug);
 }
@@ -176,6 +183,7 @@ export async function createCatalogProduct(input: {
     seoDescription: "",
     keywords: [],
     photos: [],
+    pieces: [],
   };
   const row = {
     slug,
@@ -242,4 +250,28 @@ export async function saveCatalogProduct(
     );
     if (!result.matchedCount) throw new Error("Product not found.");
   }
+}
+
+export async function deleteCatalogProduct(product: Product) {
+  if (product.custom && product.store === "primary") {
+    const result = await db().query("DELETE FROM depth_dot.custom_products WHERE slug = $1", [product.slug]);
+    if (!result.rowCount) throw new Error("Product not found.");
+    return;
+  }
+  if (product.custom && product.store === "atlas") {
+    const result = await (await mongo()).collection<ProductRow & { _id: string }>("custom_products").deleteOne({ _id: product.slug });
+    if (!result.deletedCount) throw new Error("Product not found.");
+    return;
+  }
+  if (product.custom) throw new Error("Product storage is not available.");
+  await db().query(
+    `INSERT INTO depth_dot.app_settings AS existing_setting (key, value, updated_at)
+     VALUES ($1, jsonb_build_array($2)::text, now())
+     ON CONFLICT (key) DO UPDATE SET value = (
+       SELECT jsonb_agg(DISTINCT item)::text
+      FROM jsonb_array_elements_text(existing_setting.value::jsonb || jsonb_build_array($2)) AS hidden(item)
+     ), updated_at = now()`,
+    [deletedBuiltinProductsKey, product.slug],
+  );
+  await db().query("DELETE FROM depth_dot.product_content WHERE product_slug = $1", [product.slug]);
 }

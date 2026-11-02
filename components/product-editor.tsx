@@ -14,6 +14,7 @@ export type EditorContent = {
   seoDescription: string;
   keywords: string[];
   photos: { id: string; alt: string }[];
+  pieces: { slug: string; title: string; summary: string; photoId: string | null }[];
 };
 
 export type EditorPhoto = { id: string; url: string; width: number | null; height: number | null; alt: string; published: boolean };
@@ -339,6 +340,23 @@ export function ProductEditor({
     setDirty(true);
   }
 
+  function updatePiece(index: number, key: "title" | "summary" | "photoId", value: string | null) {
+    setContent((current) => ({
+      ...current,
+      pieces: current.pieces.map((piece, pieceIndex) => (pieceIndex === index ? { ...piece, [key]: value } : piece)),
+    }));
+    setDirty(true);
+  }
+
+  function addPiece() {
+    if (content.pieces.length >= 30) return;
+    edit("pieces", [...content.pieces, { slug: crypto.randomUUID(), title: "", summary: "", photoId: null }]);
+  }
+
+  function removePiece(index: number) {
+    edit("pieces", content.pieces.filter((_, pieceIndex) => pieceIndex !== index));
+  }
+
   function clearPending() {
     pending.forEach((item) => {
       URL.revokeObjectURL(item.preview);
@@ -441,11 +459,36 @@ export function ProductEditor({
       return;
     }
     setSaved((current) => current.filter((item) => item.id !== photo.id));
+    if (content.pieces.some((piece) => piece.photoId === photo.id)) {
+      setContent((current) => ({
+        ...current,
+        pieces: current.pieces.map((piece) => (piece.photoId === photo.id ? { ...piece, photoId: null } : piece)),
+      }));
+      setDirty(true);
+    }
     setMessage({ text: "Photo deleted.", error: false });
     router.refresh();
   }
 
+  async function removeProduct() {
+    if (!window.confirm(`Delete “${content.title}” and all of its uploaded photos? This cannot be undone.`)) return;
+    setBusy("delete");
+    setMessage(null);
+    const response = await fetch(`/api/admin/products/${encodeURIComponent(product.slug)}`, { method: "DELETE" }).catch(() => null);
+    const data = (await response?.json().catch(() => ({}))) as { error?: string } | undefined;
+    if (!response?.ok) {
+      setBusy("");
+      setMessage({ text: data?.error || "The product was not deleted. Try again.", error: true });
+      return;
+    }
+    window.location.assign("/studio/products");
+  }
+
   async function save(action: "draft" | "publish") {
+    if (content.pieces.some((piece) => !piece.title.trim())) {
+      setMessage({ text: "Give every variation a name or remove the empty variation before saving.", error: true });
+      return;
+    }
     setBusy("save");
     setMessage(null);
     const uploaded: EditorPhoto[] = [];
@@ -489,6 +532,14 @@ export function ProductEditor({
   const pageTitle = content.seoTitle || `${content.title} · ${product.categoryPhrase}`;
   const pageDescription = content.seoDescription || content.description;
   const snippet = pageDescription.length > 158 ? `${pageDescription.slice(0, 155).trimEnd()}...` : pageDescription;
+  const previewPieces = content.pieces.map((piece, index) => ({
+    ...piece,
+    image:
+      saved.find((photo) => photo.id === piece.photoId)?.url ??
+      product.pieces.find((savedPiece) => savedPiece.slug === piece.slug)?.image ??
+      saved[index]?.url ??
+      product.artwork,
+  }));
   const current = preview ? tiles[preview.index] : null;
   const status = unsaved
     ? { text: "Unsaved changes", tone: "is-warn" }
@@ -534,6 +585,22 @@ export function ProductEditor({
                 <option value={newProductOption}>+ Create a new product...</option>
               </select>
             </label>
+            <div className="product-picker-actions">
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => {
+                  document.getElementById("product-details-editor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  document.getElementById("product-title-editor")?.focus({ preventScroll: true });
+                }}
+                disabled={Boolean(busy)}
+              >
+                Edit selected
+              </button>
+              <button className="button secondary photo-delete" type="button" onClick={removeProduct} disabled={Boolean(busy)}>
+                Delete selected
+              </button>
+            </div>
           </div>
           <div className="editor-status-block">
             <span className={`storage-badge ${status.tone}`}>{status.text}</span>
@@ -590,7 +657,7 @@ export function ProductEditor({
             }}
           />
           <strong>{busy === "prepare" ? "Preparing previews" : "Choose photos or drop them here"}</strong>
-          <span className="note">Photos are processed on this computer for preview. Nothing uploads until you save.</span>
+          <span className="note">Published photos appear in Variations &amp; Pieces in order; the cover fills any remaining pieces. Nothing uploads until you save.</span>
         </label>
 
         {progress ? (
@@ -671,12 +738,52 @@ export function ProductEditor({
         )}
       </section>
 
-      <section className="photo-manager" aria-labelledby="details-heading">
+      <section className="photo-manager" aria-labelledby="variations-heading">
+        <p className="kicker" id="variations-heading">Variations &amp; Pieces</p>
+        <p className="note">Add one entry for each style. Upload photos above and save them first, then assign a photo to each variation here.</p>
+        <div className="editor-variation-list">
+          {content.pieces.map((piece, index) => (
+            <div className="editor-variation-row" key={piece.slug}>
+              <label className="editor-field">
+                <span>Variation name</span>
+                <input value={piece.title} maxLength={80} onChange={(event) => updatePiece(index, "title", event.target.value)} disabled={Boolean(busy)} />
+              </label>
+              <label className="editor-field">
+                <span>Short description</span>
+                <input value={piece.summary} maxLength={160} onChange={(event) => updatePiece(index, "summary", event.target.value)} disabled={Boolean(busy)} />
+              </label>
+              <label className="editor-field is-wide">
+                <span>Variation photo</span>
+                <select
+                  value={piece.photoId ?? ""}
+                  onChange={(event) => updatePiece(index, "photoId", event.target.value || null)}
+                  disabled={Boolean(busy)}
+                >
+                  <option value="">Use the next available photo or product cover</option>
+                  {saved.map((photo) => (
+                    <option key={photo.id} value={photo.id}>
+                      {photo.alt || `Photo ${saved.indexOf(photo) + 1}`}{photo.published ? "" : " · draft"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="button secondary photo-delete" type="button" onClick={() => removePiece(index)} disabled={Boolean(busy)}>
+                Remove variation
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="button secondary" type="button" onClick={addPiece} disabled={Boolean(busy) || content.pieces.length >= 30}>
+          Add variation
+        </button>
+      </section>
+
+      <section className="photo-manager" id="product-details-editor" aria-labelledby="details-heading">
         <p className="kicker" id="details-heading">Product details</p>
         <div className="editor-fields">
           <label className="editor-field">
             <span>Product name {counter(content.title, limits.title)}</span>
-            <input value={content.title} maxLength={limits.title} onChange={(event) => edit("title", event.target.value)} disabled={Boolean(busy)} />
+            <input id="product-title-editor" value={content.title} maxLength={limits.title} onChange={(event) => edit("title", event.target.value)} disabled={Boolean(busy)} />
           </label>
           <label className="editor-field">
             <span>Short summary, shown on catalog cards {counter(content.summary, limits.summary)}</span>
@@ -814,7 +921,7 @@ export function ProductEditor({
         details={content.details}
         category={product.category}
         artwork={product.artwork}
-        pieces={product.pieces}
+        pieces={previewPieces}
         photos={tiles.map((tile, index) =>
           tile.kind === "saved"
             ? { ...tile.photo, alt: tile.photo.alt || `${content.title}, photo ${index + 1}` }

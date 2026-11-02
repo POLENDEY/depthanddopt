@@ -3,6 +3,7 @@ export type Piece = {
   title: string;
   summary: string;
   image: string;
+  photoId?: string | null;
 };
 
 export type Product = {

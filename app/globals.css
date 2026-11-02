@@ -706,6 +706,16 @@ textarea { min-height: 9rem; resize: vertical; }
 .photo-manager-head .kicker { margin: 0 0 0.5rem; }
 .photo-product-picker { display: grid; gap: 0.3rem; margin: 0; }
 .photo-product-picker select { min-width: min(22rem, 100%); padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; }
+.product-picker-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.55rem; }
+.product-picker-actions .photo-delete, .editor-variation-row .photo-delete { color: #8a2e2e; border-color: #e7cccc; }
+.editor-variation-list { display: grid; gap: 0.8rem; margin: 1rem 0; }
+.editor-variation-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 0.8rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.editor-variation-row .editor-field.is-wide { grid-column: 1 / -1; }
+.editor-variation-row select, .editor-field select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; }
+@media (max-width: 640px) {
+  .editor-variation-row { grid-template-columns: 1fr; }
+  .editor-variation-row .editor-field.is-wide { grid-column: auto; }
+}
 .photo-style { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin: 1.2rem 0 0; padding: 0; border: 0; }
 .photo-style legend { margin-bottom: 0.6rem; }
 .photo-drop { position: relative; display: grid; place-items: center; gap: 0.3rem; margin: 1rem 0 0; padding: 2rem 1rem; border: 1.5px dashed #c9c9c9; border-radius: 16px; background: var(--soft); text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }

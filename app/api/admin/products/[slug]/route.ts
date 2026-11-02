@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { productPaths, refreshProductPages, requireAdmin, unavailable } from "@/lib/admin-api";
 import { submitToIndexNow } from "@/lib/indexnow";
 import { sanitizeContent, saveContent } from "@/lib/product-content";
-import { savePhotoDetails } from "@/lib/product-photos";
-import { findCatalogProduct } from "@/lib/product-catalog";
+import { deletePhoto, listPhotos, savePhotoDetails } from "@/lib/product-photos";
+import { deleteCatalogProduct, findCatalogProduct } from "@/lib/product-catalog";
 
 export async function PUT(request: Request, context: { params: Promise<{ slug: string }> }) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
@@ -29,4 +29,22 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
   refreshProductPages(product);
   const notified = await submitToIndexNow(productPaths(product));
   return NextResponse.json({ ok: true, published: true, notified });
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ slug: string }> }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
+  const { slug } = await context.params;
+  const product = await findCatalogProduct(slug, true);
+  if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+
+  try {
+    const photos = await listPhotos(product.slug, { includeDrafts: true });
+    for (const photo of photos) await deletePhoto(photo.id, product.slug);
+    await deleteCatalogProduct(product);
+  } catch (cause) {
+    return unavailable("Product delete", cause);
+  }
+
+  refreshProductPages(product);
+  return NextResponse.json({ ok: true });
 }

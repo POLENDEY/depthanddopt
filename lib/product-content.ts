@@ -18,6 +18,7 @@ export type ProductContent = {
   seoDescription: string;
   keywords: string[];
   photos: { id: string; alt: string }[];
+  pieces: { slug: string; title: string; summary: string; photoId: string | null }[];
 };
 
 export type LivePhoto = Pick<ProductPhoto, "id" | "url" | "width" | "height"> & { alt: string };
@@ -43,6 +44,7 @@ export function defaultContent(product: Product): ProductContent {
     seoDescription: "",
     keywords: [],
     photos: [],
+    pieces: product.pieces.map(({ slug, title, summary, photoId }) => ({ slug, title, summary, photoId: photoId ?? null })),
   };
 }
 
@@ -58,6 +60,8 @@ function list(value: unknown, maxItems: number, maxLength: number) {
 export function sanitizeContent(input: unknown, product: Product): ProductContent {
   const body = (input ?? {}) as Record<string, unknown>;
   const photos = Array.isArray(body.photos) ? body.photos : [];
+  const pieces = Array.isArray(body.pieces) ? body.pieces : defaultContent(product).pieces;
+  const usedSlugs = new Set<string>();
   return {
     title: clean(body.title, limits.title) || product.title,
     summary: clean(body.summary, limits.summary) || product.summary,
@@ -72,6 +76,26 @@ export function sanitizeContent(input: unknown, product: Product): ProductConten
       .filter((photo): photo is { id: string; alt?: unknown } => typeof photo.id === "string" && /^[0-9a-f-]{36}$/i.test(photo.id))
       .slice(0, 100)
       .map((photo) => ({ id: photo.id, alt: clean(photo.alt, limits.alt) })),
+    pieces: pieces
+      .slice(0, 30)
+      .map((piece, index) => {
+        const value = piece as { slug?: unknown; title?: unknown; summary?: unknown; photoId?: unknown };
+        const title = clean(value.title, limits.title);
+        const baseSlug = typeof value.slug === "string" && /^[a-z0-9][a-z0-9-]{0,80}$/i.test(value.slug)
+          ? value.slug
+          : `variation-${index + 1}`;
+        let slug = baseSlug;
+        let suffix = 2;
+        while (usedSlugs.has(slug)) slug = `${baseSlug}-${suffix++}`;
+        usedSlugs.add(slug);
+        return {
+          slug,
+          title,
+          summary: clean(value.summary, limits.summary),
+          photoId: typeof value.photoId === "string" && /^[0-9a-f-]{36}$/i.test(value.photoId) ? value.photoId : null,
+        };
+      })
+      .filter((piece) => piece.title),
   };
 }
 
@@ -82,6 +106,7 @@ function merge(product: Product, saved: Partial<ProductContent> | null | undefin
     ...base,
     ...Object.fromEntries(Object.entries(saved).filter(([, value]) => value !== "" && value !== null && value !== undefined)),
     details: saved.details?.length ? saved.details : base.details,
+    pieces: Array.isArray(saved.pieces) ? saved.pieces : base.pieces,
   } as ProductContent;
 }
 
@@ -122,6 +147,15 @@ function toLive(product: Product, row: ContentRow | undefined, photos: ProductPh
     summary: content.summary,
     description: content.description,
     details: content.details,
+    pieces: content.pieces.map((piece, index) => ({
+      ...piece,
+      image:
+        livePhotos.find((photo) => photo.id === piece.photoId)?.url ??
+        livePhotos[index]?.url ??
+        livePhotos[0]?.url ??
+        product.pieces[index]?.image ??
+        product.image,
+    })),
     image: livePhotos[0]?.url ?? product.image,
     seoTitle: content.seoTitle,
     seoDescription: content.seoDescription,
