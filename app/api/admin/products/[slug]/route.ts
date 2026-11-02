@@ -3,12 +3,12 @@ import { productPaths, refreshProductPages, requireAdmin, unavailable } from "@/
 import { submitToIndexNow } from "@/lib/indexnow";
 import { sanitizeContent, saveContent } from "@/lib/product-content";
 import { savePhotoDetails } from "@/lib/product-photos";
-import { getProduct } from "@/lib/products";
+import { findCatalogProduct } from "@/lib/product-catalog";
 
 export async function PUT(request: Request, context: { params: Promise<{ slug: string }> }) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
   const { slug } = await context.params;
-  const product = getProduct(slug);
+  const product = await findCatalogProduct(slug, true);
   if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
   const body = (await request.json().catch(() => null)) as { content?: unknown; action?: unknown } | null;

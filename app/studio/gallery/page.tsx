@@ -1,12 +1,12 @@
 import { PhotoGallery } from "@/components/photo-gallery";
 import { StudioNav } from "@/components/studio-nav";
 import { allPhotos } from "@/lib/product-photos";
-import { products } from "@/lib/products";
+import { listCatalogProducts } from "@/lib/product-catalog";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudioGalleryPage() {
-  const photos = await allPhotos().catch(() => null);
+  const [photos, products] = await Promise.all([allPhotos().catch(() => null), listCatalogProducts(true)]);
   const titles = new Map(products.map((product) => [product.slug, product.title]));
 
   return (

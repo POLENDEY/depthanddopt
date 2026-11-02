@@ -8,12 +8,14 @@ export type Piece = {
 export type Product = {
   slug: string;
   title: string;
-  category: "3D print" | "Personal" | "Print";
+  category: string;
   summary: string;
   description: string;
   image: string;
   details: string[];
   pieces: Piece[];
+  store?: "primary" | "atlas";
+  custom?: boolean;
 };
 
 export const products: Product[] = [
@@ -227,7 +229,14 @@ export function productsInCategory(title: Product["category"]) {
 
 export function getCategorySlug(category: Product["category"] | string): string {
   if (category === "3D print" || category === "3d-print") return "3d-print";
-  return category.toLowerCase();
+  return category
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
 }
 
 export function getCategoryByTitle(title: Product["category"]) {

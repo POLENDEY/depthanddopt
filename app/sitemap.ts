@@ -1,14 +1,14 @@
 import type { MetadataRoute } from "next";
 import { liveProducts } from "@/lib/product-content";
-import { categories } from "@/lib/products";
+import { listCatalogCategories } from "@/lib/product-catalog";
 import { siteUrl } from "@/lib/site";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
-  const products = await liveProducts();
+  const [products, categories] = await Promise.all([liveProducts(), listCatalogCategories()]);
   return [
     {
       url: base,

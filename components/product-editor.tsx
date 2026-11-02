@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ProductPreview, type PreviewPiece } from "@/components/product-preview";
 import { preparePhoto, type PhotoStyle } from "@/lib/photo-prep";
@@ -22,6 +22,8 @@ export type EditorProduct = {
   slug: string;
   category: string;
   categoryPhrase: string;
+  store: "primary" | "atlas";
+  custom: boolean;
   artwork: string;
   pieces: PreviewPiece[];
   content: EditorContent;
@@ -45,8 +47,177 @@ type Pending = {
 
 type Tile = { kind: "saved"; photo: EditorPhoto } | { kind: "pending"; item: Pending };
 type Limits = { title: number; summary: number; description: number; seoTitle: number; seoDescription: number; alt: number };
+type EditorCategory = { slug: string; title: string; summary: string; image: string };
+type DatabaseOption = {
+  online: boolean;
+  sizeMb: number | null;
+  capacityMb: number | null;
+  photoStorageMb?: number | null;
+  photoCapacityMb?: number | null;
+};
 
 const brand = "Depth & Dot";
+const newCategoryOption = "__new";
+
+function CreateProductForm({
+  categories,
+  databases,
+}: {
+  categories: EditorCategory[];
+  databases: { primary: DatabaseOption; atlas: DatabaseOption & { configured: boolean } };
+}) {
+  const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [description, setDescription] = useState("");
+  const [categorySlug, setCategorySlug] = useState(categories[0]?.slug ?? newCategoryOption);
+  const [newCategoryTitle, setNewCategoryTitle] = useState("");
+  const [newCategorySummary, setNewCategorySummary] = useState("");
+  const [store, setStore] = useState<"primary" | "atlas">(() =>
+    databases.primary.online ? "primary" : databases.atlas.configured && databases.atlas.online ? "atlas" : "primary",
+  );
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  const chosenDatabase = databases[store];
+  const isNewCategory = categorySlug === newCategoryOption;
+  const mongoAvailable = databases.atlas.configured && databases.atlas.online;
+  const isAtCapacity = (database: DatabaseOption) =>
+    (database.capacityMb !== null && database.sizeMb !== null && database.sizeMb >= database.capacityMb) ||
+    (database.photoCapacityMb != null &&
+      database.photoStorageMb != null &&
+      database.photoStorageMb >= database.photoCapacityMb);
+  const usageLabel = (database: DatabaseOption) =>
+    [
+      database.sizeMb === null
+        ? "Database usage unavailable"
+        : database.capacityMb === null
+          ? `${database.sizeMb} MB database used · limit not configured`
+          : `${database.sizeMb} of ${database.capacityMb} MB database used`,
+      ...(database.photoStorageMb === undefined
+        ? []
+        : [
+            database.photoStorageMb === null
+              ? "Photo usage unavailable"
+              : database.photoCapacityMb
+                ? `${database.photoStorageMb} of ${database.photoCapacityMb} MB photos`
+                : `${database.photoStorageMb} MB photos · limit not configured`,
+          ]),
+    ].join(" · ");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          summary,
+          description,
+          store,
+          ...(isNewCategory
+            ? { newCategory: { title: newCategoryTitle, summary: newCategorySummary } }
+            : { categorySlug }),
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string; slug?: string };
+      if (!response.ok || !data.slug) throw new Error(data.error || "Product could not be created.");
+      window.location.assign(`/studio/products?product=${encodeURIComponent(data.slug)}`);
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : "Product could not be created.", error: true });
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="photo-manager" aria-labelledby="create-product-heading">
+      <p className="kicker" id="create-product-heading">Add a product</p>
+      <p className="note">Create a new catalog item, or add a category here if it does not exist yet.</p>
+      <form className="editor-fields" onSubmit={submit}>
+        <label className="editor-field">
+          <span>Product name</span>
+          <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={80} required disabled={busy} />
+        </label>
+        <label className="editor-field">
+          <span>Category</span>
+          <select value={categorySlug} onChange={(event) => setCategorySlug(event.target.value)} disabled={busy}>
+            {categories.map((category) => <option key={category.slug} value={category.slug}>{category.title}</option>)}
+            <option value={newCategoryOption}>+ Add a new category</option>
+          </select>
+        </label>
+        {isNewCategory ? (
+          <>
+            <label className="editor-field">
+              <span>New category name</span>
+              <input value={newCategoryTitle} onChange={(event) => setNewCategoryTitle(event.target.value)} maxLength={80} required disabled={busy} />
+            </label>
+            <label className="editor-field">
+              <span>Category description</span>
+              <input value={newCategorySummary} onChange={(event) => setNewCategorySummary(event.target.value)} maxLength={160} disabled={busy} />
+            </label>
+          </>
+        ) : null}
+        <label className="editor-field is-wide">
+          <span>Short summary</span>
+          <input value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={160} required disabled={busy} />
+        </label>
+        <label className="editor-field is-wide">
+          <span>Description</span>
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1200} rows={3} disabled={busy} />
+        </label>
+        <fieldset className="editor-field is-wide editor-database-options">
+          <legend className="note">Save product data and photos to</legend>
+          <label className={`storage-option${store === "primary" ? " is-selected" : ""}`}>
+            <input
+              type="radio"
+              name="product-store"
+              checked={store === "primary"}
+              onChange={() => setStore("primary")}
+              disabled={busy || !databases.primary.online || isAtCapacity(databases.primary)}
+            />
+            <span className="storage-option-copy">
+              <span className="storage-option-heading">
+                <strong>Supabase</strong>
+                <span className={`storage-option-state${databases.primary.online ? " is-online" : " is-offline"}`}>
+                  {databases.primary.online ? "Online" : "Offline"}
+                </span>
+              </span>
+              <span className="note">{usageLabel(databases.primary)}</span>
+            </span>
+          </label>
+          <label className={`storage-option${store === "atlas" ? " is-selected" : ""}`}>
+            <input
+              type="radio"
+              name="product-store"
+              checked={store === "atlas"}
+              onChange={() => setStore("atlas")}
+              disabled={busy || !mongoAvailable || isAtCapacity(databases.atlas)}
+            />
+            <span className="storage-option-copy">
+              <span className="storage-option-heading">
+                <strong>MongoDB Atlas</strong>
+                <span className={`storage-option-state${mongoAvailable ? " is-online" : " is-offline"}`}>
+                  {mongoAvailable ? "Online" : databases.atlas.configured ? "Offline" : "Not configured"}
+                </span>
+              </span>
+              <span className="note">{databases.atlas.configured ? usageLabel(databases.atlas) : "Not configured"}</span>
+            </span>
+          </label>
+          {!chosenDatabase.online ? <p className="error" role="status">This database is currently offline.</p> : null}
+          {isAtCapacity(chosenDatabase) ? <p className="error" role="status">This database has reached its configured capacity limit.</p> : null}
+        </fieldset>
+        <div className="editor-field is-wide">
+          <button className="button" type="submit" disabled={busy || !title.trim() || !summary.trim() || !chosenDatabase.online || isAtCapacity(chosenDatabase) || (store === "atlas" && !mongoAvailable)}>
+            {busy ? "Creating product…" : "Create product"}
+          </button>
+          {message ? <p className={message.error ? "error" : "note"} role="status">{message.text}</p> : null}
+        </div>
+      </form>
+    </section>
+  );
+}
 
 function counter(value: string, max: number, ideal?: number) {
   const length = value.length;
@@ -94,11 +265,15 @@ export function ProductEditor({
   siteBase,
   limits,
   initialSlug,
+  categories,
+  databases,
 }: {
   products: EditorProduct[];
   siteBase: string;
   limits: Limits;
   initialSlug?: string;
+  categories: EditorCategory[];
+  databases: { primary: DatabaseOption; atlas: DatabaseOption & { configured: boolean } };
 }) {
   const router = useRouter();
   const [slug, setSlug] = useState(
@@ -300,6 +475,7 @@ export function ProductEditor({
 
   return (
     <div className="product-editor">
+      <CreateProductForm categories={categories} databases={databases} />
       <section className="photo-manager" aria-labelledby="editor-heading">
         <div className="photo-manager-head">
           <div>
@@ -324,6 +500,7 @@ export function ProductEditor({
           </div>
           <div className="editor-status-block">
             <span className={`storage-badge ${status.tone}`}>{status.text}</span>
+            <span className="note">Stored in {product.store === "atlas" ? "MongoDB Atlas" : "Supabase"}</span>
             <div className="editor-status-links">
               <button className="button secondary" type="button" onClick={() => setPagePreview(true)}>
                 Preview

@@ -5,11 +5,11 @@ import { ObjectReel } from "@/components/object-reel";
 import { ProductCatalog } from "@/components/product-catalog";
 import { JsonLd } from "@/components/json-ld";
 import { liveProducts } from "@/lib/product-content";
-import { categories } from "@/lib/products";
+import { listCatalogCategories } from "@/lib/product-catalog";
 import { pageMetadata, shippingNote } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMetadata({
   title: "Custom keychains & 3D printed gifts",
@@ -18,7 +18,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function ProductIndexPage() {
-  const catalog = await liveProducts();
+  const [catalog, categories] = await Promise.all([liveProducts(), listCatalogCategories()]);
   const base = siteUrl();
   const schema = {
     "@context": "https://schema.org",

@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 export const photoBucket = process.env.PRODUCT_PHOTO_BUCKET || "depth-dot-products";
 
@@ -10,7 +10,11 @@ function config() {
 }
 
 function headers(key: string, extra: Record<string, string> = {}) {
-  return { Authorization: `Bearer ${key}`, apikey: key, ...extra };
+  return {
+    apikey: key,
+    Authorization: "Bearer " + key,
+    ...extra,
+  };
 }
 
 export function publicUrl(path: string) {

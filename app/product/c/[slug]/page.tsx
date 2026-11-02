@@ -4,34 +4,39 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumb";
 import { JsonLd } from "@/components/json-ld";
 import { liveProducts } from "@/lib/product-content";
-import { categories, getCategory, productsInCategory } from "@/lib/products";
-import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
+import { categories as builtInCategories, getCategory } from "@/lib/products";
+import { findCatalogCategory, listCatalogCategories, listCatalogProducts } from "@/lib/product-catalog";
+import { phraseForCategory, pageMetadata, shippingNote } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 export function generateStaticParams() {
-  return categories.map((category) => ({ slug: category.slug }));
+  return builtInCategories.map((category) => ({ slug: category.slug }));
 }
 
-export function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  return params.then(({ slug }) => {
-    const category = getCategory(slug);
-    if (!category) return { title: "Product" };
-    const items = productsInCategory(category.title);
-    return pageMetadata({
-      title: `${categoryPhrase[category.title]} collection`,
-      description: `${category.summary} Browse ${items.map((item) => item.title).join(", ")}. ${shippingNote}`,
-      path: `/product/c/${category.slug}`,
-    });
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const category = (await findCatalogCategory(slug)) ?? getCategory(slug);
+  if (!category) return { title: "Product" };
+  const items = (await listCatalogProducts()).filter((item) => item.category === category.title);
+  return pageMetadata({
+    title: `${phraseForCategory(category.title)} collection`,
+    description: `${category.summary} Browse ${items.map((item) => item.title).join(", ")}. ${shippingNote}`,
+    path: `/product/c/${category.slug}`,
   });
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const [category, categories, catalog] = await Promise.all([
+    findCatalogCategory(slug).then((found) => found ?? getCategory(slug)),
+    listCatalogCategories(),
+    liveProducts(),
+  ]);
   if (!category) notFound();
-  const items = await liveProducts(productsInCategory(category.title));
+  const items = catalog.filter((item) => item.category === category.title);
   const otherCategories = categories.filter((c) => c.slug !== category.slug);
   const base = siteUrl();
   const schema = {

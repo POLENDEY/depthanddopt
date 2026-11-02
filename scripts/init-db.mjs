@@ -117,6 +117,29 @@ await client.query(`
     published_at timestamptz
   )
 `);
+await client.query(`
+  CREATE TABLE IF NOT EXISTS depth_dot.custom_categories (
+    slug text PRIMARY KEY,
+    title text NOT NULL,
+    summary text NOT NULL DEFAULT '',
+    image text NOT NULL DEFAULT '/images/desk.svg',
+    created_at timestamptz NOT NULL DEFAULT now()
+  )
+`);
+await client.query(`
+  CREATE TABLE IF NOT EXISTS depth_dot.custom_products (
+    slug text PRIMARY KEY,
+    category_slug text NOT NULL,
+    category text NOT NULL,
+    draft jsonb NOT NULL,
+    published jsonb,
+    draft_updated_at timestamptz NOT NULL DEFAULT now(),
+    published_at timestamptz
+  )
+`);
+await client.query(
+  "CREATE INDEX IF NOT EXISTS custom_products_category_idx ON depth_dot.custom_products (category_slug)",
+);
 
 const check = await client.query(
   "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'depth_dot' ORDER BY table_name",

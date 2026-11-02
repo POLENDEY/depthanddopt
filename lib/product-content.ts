@@ -1,7 +1,13 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { photosBySlug, type ProductPhoto } from "@/lib/product-photos";
-import { getProduct, products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
+import {
+  customProductStatus,
+  findCatalogProduct,
+  listCatalogProducts,
+  saveCatalogProduct,
+} from "@/lib/product-catalog";
 
 export type ProductContent = {
   title: string;
@@ -125,22 +131,30 @@ function toLive(product: Product, row: ContentRow | undefined, photos: ProductPh
   };
 }
 
-export async function liveProducts(items: Product[] = products): Promise<LiveProduct[]> {
+export async function liveProducts(items?: Product[]): Promise<LiveProduct[]> {
   const [rows, photos] = await Promise.all([contentRows(), photosBySlug()]);
-  return items.map((product) => toLive(product, rows.get(product.slug), photos.get(product.slug) ?? []));
+  const catalog = items ?? (await listCatalogProducts());
+  return catalog.map((product) => toLive(product, rows.get(product.slug), photos.get(product.slug) ?? []));
 }
 
 export async function liveProduct(slug: string): Promise<LiveProduct | null> {
-  const product = getProduct(slug);
+  const product = await findCatalogProduct(slug);
   if (!product) return null;
   return (await liveProducts([product]))[0];
 }
 
 export async function editorData() {
-  const [rows, photos] = await Promise.all([contentRows({ includeDrafts: true }), photosBySlug({ includeDrafts: true })]);
-  return products.map((product) => {
+  const [rows, photos, catalog] = await Promise.all([
+    contentRows({ includeDrafts: true }),
+    photosBySlug({ includeDrafts: true }),
+    listCatalogProducts(true),
+  ]);
+  return Promise.all(catalog.map(async (product) => {
     const row = rows.get(product.slug);
-    const draft = merge(product, row?.draft ?? row?.published);
+    const customStatus = product.custom && product.store
+      ? await customProductStatus(product.slug, product.store)
+      : null;
+    const draft = merge(product, customStatus?.draft ?? row?.draft ?? row?.published);
     const all = photos.get(product.slug) ?? [];
     return {
       product,
@@ -151,14 +165,19 @@ export async function editorData() {
         published: all.find((item) => item.id === photo.id)?.published ?? false,
       })),
       hasUnpublished:
-        Boolean(row?.draft && JSON.stringify(row.draft) !== JSON.stringify(row.published)) || all.some((photo) => !photo.published),
-      publishedAt: row?.published_at?.toISOString() ?? null,
-      draftSavedAt: row?.draft_updated_at?.toISOString() ?? null,
+        Boolean((customStatus?.draft ?? row?.draft) && JSON.stringify(customStatus?.draft ?? row?.draft) !== JSON.stringify(customStatus?.published ?? row?.published)) || all.some((photo) => !photo.published),
+      publishedAt: (customStatus?.published_at ?? row?.published_at)?.toISOString() ?? null,
+      draftSavedAt: (customStatus?.draft_updated_at ?? row?.draft_updated_at)?.toISOString() ?? null,
     };
-  });
+  }));
 }
 
 export async function saveContent(slug: string, content: ProductContent, publish: boolean) {
+  const product = await findCatalogProduct(slug, true);
+  if (product?.custom) {
+    await saveCatalogProduct(product, content, publish);
+    return;
+  }
   await db().query(
     publish
       ? `INSERT INTO depth_dot.product_content (product_slug, draft, published, draft_updated_at, published_at)

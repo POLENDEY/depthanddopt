@@ -4,9 +4,19 @@ import { mongo, mongoConfigured } from "@/lib/mongo";
 
 export type InquiryStore = "primary" | "atlas";
 export type StorageMode = "auto" | "primary" | "atlas";
+export class StoreUnavailableError extends Error {}
+export class StoreCapacityError extends Error {}
 
 export const storageModes: StorageMode[] = ["auto", "primary", "atlas"];
 export const capacityMb = Number(process.env.PG_CAPACITY_MB || 450);
+const configuredMongoCapacity = Number(process.env.MONGODB_CAPACITY_MB);
+export const mongoCapacityMb =
+  Number.isFinite(configuredMongoCapacity) && configuredMongoCapacity > 0 ? configuredMongoCapacity : null;
+const configuredSupabaseStorageCapacity = Number(process.env.SUPABASE_STORAGE_CAPACITY_MB);
+export const supabaseStorageCapacityMb =
+  Number.isFinite(configuredSupabaseStorageCapacity) && configuredSupabaseStorageCapacity > 0
+    ? configuredSupabaseStorageCapacity
+    : null;
 
 const capacityBytes = capacityMb * 1024 * 1024;
 const sizeCheckMs = 10 * 60 * 1000;
@@ -20,6 +30,13 @@ type MongoHeartbeat = { _id: string; at: Date; count?: number };
 async function primarySizeBytes() {
   const result = await db().query<{ size: string }>("SELECT pg_database_size(current_database()) AS size");
   return Number(result.rows[0]?.size ?? 0);
+}
+
+async function primaryPhotoBytes() {
+  const result = await db().query<{ bytes: string }>(
+    "SELECT COALESCE(sum(bytes), 0)::text AS bytes FROM depth_dot.product_photos",
+  );
+  return Number(result.rows[0]?.bytes ?? 0);
 }
 
 export async function primaryIsFull() {
@@ -141,39 +158,81 @@ export type StorageStatus = {
   mode: StorageMode;
   active: InquiryStore | null;
   reason: string;
-  primary: { online: boolean; sizeMb: number | null; capacityMb: number; count: number | null; lastPing: string | null };
-  atlas: { configured: boolean; online: boolean; count: number | null; lastPing: string | null };
+  primary: {
+    online: boolean;
+    sizeMb: number | null;
+    capacityMb: number;
+    photoStorageMb: number | null;
+    photoCapacityMb: number | null;
+    count: number | null;
+    productCount: number | null;
+    lastPing: string | null;
+  };
+  atlas: {
+    configured: boolean;
+    online: boolean;
+    sizeMb: number | null;
+    capacityMb: number | null;
+    count: number | null;
+    productCount: number | null;
+    lastPing: string | null;
+  };
 };
 
 export async function storageStatus(): Promise<StorageStatus> {
   const mode = await getStorageMode();
 
-  const primary: StorageStatus["primary"] = { online: false, sizeMb: null, capacityMb, count: null, lastPing: null };
+  const primary: StorageStatus["primary"] = {
+    online: false,
+    sizeMb: null,
+    capacityMb,
+    photoStorageMb: null,
+    photoCapacityMb: supabaseStorageCapacityMb,
+    count: null,
+    productCount: null,
+    lastPing: null,
+  };
   try {
-    const [size, count, ping] = await Promise.all([
+    const [size, count, productCount, ping, photoBytes] = await Promise.all([
       primarySizeBytes(),
       db().query<{ count: string }>("SELECT count(*) AS count FROM depth_dot.inquiries"),
+      db().query<{ count: string }>("SELECT count(*) AS count FROM depth_dot.custom_products"),
       readPrimarySetting(keepAliveKey),
+      primaryPhotoBytes(),
     ]);
     primary.online = true;
     primary.sizeMb = Math.round((size / 1024 / 1024) * 10) / 10;
+    primary.photoStorageMb = Math.round((photoBytes / 1024 / 1024) * 10) / 10;
     primary.count = Number(count.rows[0]?.count ?? 0);
+    primary.productCount = Number(productCount.rows[0]?.count ?? 0);
     primary.lastPing = ping?.value ?? null;
     globalForStore.ddPgFull = { full: size >= capacityBytes, checkedAt: Date.now() };
   } catch (error) {
     console.error("Storage status: the main database is unreachable.", error);
   }
 
-  const atlas: StorageStatus["atlas"] = { configured: mongoConfigured(), online: false, count: null, lastPing: null };
+  const atlas: StorageStatus["atlas"] = {
+    configured: mongoConfigured(),
+    online: false,
+    sizeMb: null,
+    capacityMb: mongoCapacityMb,
+    count: null,
+    productCount: null,
+    lastPing: null,
+  };
   if (atlas.configured) {
     try {
       const database = await mongo();
-      const [count, heartbeat] = await Promise.all([
+      const [stats, count, productCount, heartbeat] = await Promise.all([
+        database.stats(),
         database.collection("inquiries").countDocuments(),
+        database.collection("custom_products").countDocuments(),
         (await atlasHeartbeats()).findOne({ _id: "keepalive" }),
       ]);
       atlas.online = true;
+      atlas.sizeMb = Math.round(((stats.dataSize + stats.indexSize) / 1024 / 1024) * 10) / 10;
       atlas.count = count;
+      atlas.productCount = productCount;
       atlas.lastPing = heartbeat ? new Date(heartbeat.at).toISOString() : null;
     } catch (error) {
       console.error("Storage status: Atlas is unreachable.", error);
@@ -200,4 +259,26 @@ export async function storageStatus(): Promise<StorageStatus> {
 
   if (!active) reason = "Neither database is reachable right now. New inquiries will fail to save.";
   return { mode, active, reason, primary, atlas };
+}
+
+export async function assertStoreWritable(store: InquiryStore) {
+  const status = await storageStatus();
+  if (store === "primary") {
+    const selected = status.primary;
+    if (!selected.online) throw new StoreUnavailableError("Supabase is offline.");
+    if (
+      (selected.sizeMb !== null && selected.sizeMb >= selected.capacityMb) ||
+      (selected.photoCapacityMb !== null &&
+        selected.photoStorageMb !== null &&
+        selected.photoStorageMb >= selected.photoCapacityMb)
+    ) {
+      throw new StoreCapacityError("Supabase has reached its configured capacity.");
+    }
+    return;
+  }
+  const selected = status.atlas;
+  if (!selected.online) throw new StoreUnavailableError("MongoDB is offline.");
+  if (selected.capacityMb !== null && selected.sizeMb !== null && selected.sizeMb >= selected.capacityMb) {
+    throw new StoreCapacityError("MongoDB has reached its configured capacity.");
+  }
 }

@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import type { Product } from "@/lib/products";
 import { ogImage, siteName } from "@/lib/site";
 
-export const categoryPhrase: Record<Product["category"], string> = {
+const categoryPhrases: Record<string, string> = {
   "3D print": "Custom 3D print",
   Personal: "Personalized gift",
   Print: "Custom print",
 };
+
+export function phraseForCategory(category: Product["category"]) {
+  return categoryPhrases[category] ?? `Custom ${category}`;
+}
 
 export const shippingNote = "Made to order in Quezon City and shipped across the Philippines.";
 

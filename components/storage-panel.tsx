@@ -10,8 +10,25 @@ export type StoragePanelStatus = {
   mode: Mode;
   active: Store | null;
   reason: string;
-  primary: { online: boolean; sizeMb: number | null; capacityMb: number; count: number | null; lastPing: string | null };
-  atlas: { configured: boolean; online: boolean; count: number | null; lastPing: string | null };
+  primary: {
+    online: boolean;
+    sizeMb: number | null;
+    capacityMb: number;
+    photoStorageMb: number | null;
+    photoCapacityMb: number | null;
+    count: number | null;
+    productCount: number | null;
+    lastPing: string | null;
+  };
+  atlas: {
+    configured: boolean;
+    online: boolean;
+    sizeMb: number | null;
+    capacityMb: number | null;
+    count: number | null;
+    productCount: number | null;
+    lastPing: string | null;
+  };
 };
 
 const storeNames: Record<Store, string> = { primary: "Supabase", atlas: "MongoDB Atlas" };
@@ -39,6 +56,12 @@ export function StoragePanel({ status }: { status: StoragePanelStatus }) {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const { primary, atlas } = status;
   const usage = primary.sizeMb === null ? 0 : Math.min(100, (primary.sizeMb / primary.capacityMb) * 100);
+  const photoUsage =
+    primary.photoStorageMb === null || primary.photoCapacityMb === null
+      ? 0
+      : Math.min(100, (primary.photoStorageMb / primary.photoCapacityMb) * 100);
+  const atlasUsage =
+    atlas.sizeMb === null || atlas.capacityMb === null ? 0 : Math.min(100, (atlas.sizeMb / atlas.capacityMb) * 100);
 
   async function send(body: object, kind: "save" | "ping") {
     setPending(kind);
@@ -68,7 +91,7 @@ export function StoragePanel({ status }: { status: StoragePanelStatus }) {
     <section className="storage-panel" aria-labelledby="storage-heading">
       <div className="storage-head">
         <div>
-          <p className="kicker" id="storage-heading">Inquiry database</p>
+          <p className="kicker" id="storage-heading">Database usage</p>
           <p className="storage-active">
             <span className={`storage-dot ${status.active ? "is-on" : "is-off"}`} aria-hidden="true" />
             {status.active ? (
@@ -92,12 +115,36 @@ export function StoragePanel({ status }: { status: StoragePanelStatus }) {
             <h2>Supabase</h2>
             <span className={`storage-badge ${primary.online ? "is-on" : "is-off"}`}>{primary.online ? "Online" : "Offline"}</span>
           </div>
-          <p className="note">Main database</p>
-          <div className="storage-meter" role="meter" aria-label="Supabase storage used" aria-valuemin={0} aria-valuemax={primary.capacityMb} aria-valuenow={primary.sizeMb ?? 0}>
+          <p className="note">Supabase Postgres database</p>
+          <div className="storage-meter" role="meter" aria-label="Supabase database size" aria-valuemin={0} aria-valuemax={primary.capacityMb} aria-valuenow={primary.sizeMb ?? 0}>
             <span style={{ width: `${usage}%` }} className={usage >= 90 ? "is-high" : undefined} />
           </div>
+          <p className="note">Product photo files in Supabase Storage</p>
+          {primary.photoCapacityMb ? (
+            <div
+              className="storage-meter"
+              role="meter"
+              aria-label="Supabase product photo storage usage"
+              aria-valuemin={0}
+              aria-valuemax={primary.photoCapacityMb}
+              aria-valuenow={primary.photoStorageMb ?? 0}
+            >
+              <span style={{ width: `${photoUsage}%` }} className={photoUsage >= 90 ? "is-high" : undefined} />
+            </div>
+          ) : null}
           <dl className="storage-stats">
-            <div><dt>Used</dt><dd>{primary.sizeMb === null ? "-" : `${primary.sizeMb} of ${primary.capacityMb} MB`}</dd></div>
+            <div><dt>Database size</dt><dd>{primary.sizeMb === null ? "-" : `${primary.sizeMb} of ${primary.capacityMb} MB`}</dd></div>
+            <div>
+              <dt>Product photos</dt>
+              <dd>
+                {primary.photoStorageMb === null
+                  ? "-"
+                  : primary.photoCapacityMb
+                    ? `${primary.photoStorageMb} of ${primary.photoCapacityMb} MB`
+                    : `${primary.photoStorageMb} MB · limit not configured`}
+              </dd>
+            </div>
+            <div><dt>Custom products</dt><dd>{primary.productCount ?? "-"}</dd></div>
             <div><dt>Inquiries</dt><dd>{primary.count ?? "-"}</dd></div>
             <div><dt>Last keep-alive</dt><dd>{pingLabel(primary.lastPing)}</dd></div>
           </dl>
@@ -110,11 +157,40 @@ export function StoragePanel({ status }: { status: StoragePanelStatus }) {
               {!atlas.configured ? "Not set up" : atlas.online ? "Online" : "Offline"}
             </span>
           </div>
-          <p className="note">Backup database</p>
-          <dl className="storage-stats">
-            <div><dt>Inquiries</dt><dd>{atlas.count ?? "-"}</dd></div>
-            <div><dt>Last keep-alive</dt><dd>{pingLabel(atlas.lastPing)}</dd></div>
-          </dl>
+          <p className="note">MongoDB data and indexes</p>
+          {atlas.configured ? (
+            <>
+              {atlas.capacityMb ? (
+                <div
+                  className="storage-meter"
+                  role="meter"
+                  aria-label="MongoDB data usage"
+                  aria-valuemin={0}
+                  aria-valuemax={atlas.capacityMb}
+                  aria-valuenow={atlas.sizeMb ?? 0}
+                >
+                  <span style={{ width: `${atlasUsage}%` }} className={atlasUsage >= 90 ? "is-high" : undefined} />
+                </div>
+              ) : null}
+              <dl className="storage-stats">
+                <div>
+                  <dt>Database size</dt>
+                  <dd>
+                    {atlas.sizeMb === null
+                      ? "-"
+                      : atlas.capacityMb
+                        ? `${atlas.sizeMb} of ${atlas.capacityMb} MB`
+                        : `${atlas.sizeMb} MB · limit not configured`}
+                  </dd>
+                </div>
+                <div><dt>Products</dt><dd>{atlas.productCount ?? "-"}</dd></div>
+                <div><dt>Inquiries</dt><dd>{atlas.count ?? "-"}</dd></div>
+                <div><dt>Last keep-alive</dt><dd>{pingLabel(atlas.lastPing)}</dd></div>
+              </dl>
+            </>
+          ) : (
+            <p className="note">Configure MongoDB to view its usage.</p>
+          )}
         </article>
       </div>
 

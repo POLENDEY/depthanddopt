@@ -749,6 +749,17 @@ button.photo-tile-image { display: block; width: 100%; padding: 0; border: 0; fo
 .editor-field > span:first-child { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.9rem; font-weight: 600; }
 .editor-field input, .editor-field textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; }
 .editor-field textarea { min-height: 7rem; resize: vertical; }
+.editor-database-options { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; padding: 1rem; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.editor-database-options legend { grid-column: 1 / -1; margin: 0; padding: 0 0.25rem; }
+.editor-database-options .storage-option { min-width: 0; height: 100%; padding: 0.9rem; background: #fff; }
+.editor-database-options .storage-option > input[type="radio"] { flex: 0 0 1rem; width: 1rem; height: 1rem; margin: 0.2rem 0 0; padding: 0; }
+.editor-database-options .storage-option-copy { display: grid; flex: 1; min-width: 0; gap: 0.45rem; }
+.storage-option-heading { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.storage-option-state { padding: 0.18rem 0.5rem; border-radius: 999px; font-size: 0.68rem; line-height: 1.4; text-transform: uppercase; letter-spacing: 0.05em; }
+.storage-option-state.is-online { background: rgb(31 157 85 / 12%); color: #17703d; }
+.storage-option-state.is-offline { background: rgb(192 57 43 / 10%); color: #8a2e2e; }
+.editor-database-options .note { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
+.editor-database-options > .error { grid-column: 1 / -1; margin: 0; }
 .editor-field small { margin: 0; font-size: 0.8rem; }
 .field-count { font-weight: 400; font-size: 0.78rem; color: var(--muted, #777); font-variant-numeric: tabular-nums; }
 .field-count.is-warn { color: #7a5600; }
@@ -799,6 +810,8 @@ button.photo-tile-image { display: block; width: 100%; padding: 0; border: 0; fo
   .photo-style { grid-template-columns: 1fr; }
   .studio-nav form { margin-left: 0; }
   .editor-fields { grid-template-columns: 1fr; }
+  .editor-database-options { grid-template-columns: 1fr; }
+  .editor-database-options legend, .editor-database-options > .error { grid-column: 1; }
   .editor-status-block { justify-items: start; }
   .editor-savebar { bottom: 0.4rem; }
 }

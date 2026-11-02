@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { refreshProductPages, requireAdmin, unavailable } from "@/lib/admin-api";
 import { limits } from "@/lib/product-content";
 import { addPhoto, deletePhoto, listPhotos } from "@/lib/product-photos";
-import { getProduct } from "@/lib/products";
+import { findCatalogProduct } from "@/lib/product-catalog";
+import { assertStoreWritable, StoreCapacityError, StoreUnavailableError } from "@/lib/storage";
 
 const maxBytes = 4 * 1024 * 1024;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,7 +11,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 async function resolve(context: { params: Promise<{ slug: string }> }) {
   if (!(await requireAdmin())) return { error: NextResponse.json({ error: "Sign in again." }, { status: 401 }) };
   const { slug } = await context.params;
-  const product = getProduct(slug);
+  const product = await findCatalogProduct(slug, true);
   if (!product) return { error: NextResponse.json({ error: "Product not found." }, { status: 404 }) };
   return { product };
 }
@@ -49,16 +50,20 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
   const published = form?.get("publish") === "true";
   const alt = String(form?.get("alt") ?? "").replace(/\s+/g, " ").trim().slice(0, limits.alt) || null;
   try {
+    const store = product.store ?? "primary";
+    await assertStoreWritable(store);
     const photo = await addPhoto(product.slug, buffer, {
       style: form?.get("style") === "raw" ? "raw" : "white",
       width: dimension(form?.get("width") ?? null),
       height: dimension(form?.get("height") ?? null),
       alt,
       published,
-    });
+    }, store);
     if (published) refreshProductPages(product);
     return NextResponse.json({ photo });
   } catch (cause) {
+    if (cause instanceof StoreCapacityError) return NextResponse.json({ error: cause.message }, { status: 507 });
+    if (cause instanceof StoreUnavailableError) return NextResponse.json({ error: cause.message }, { status: 503 });
     return unavailable("Photo upload", cause);
   }
 }

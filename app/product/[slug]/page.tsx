@@ -6,11 +6,12 @@ import { JsonLd } from "@/components/json-ld";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductPhotos } from "@/components/product-photos";
 import { liveProduct, liveProducts } from "@/lib/product-content";
-import { getCategorySlug, getRelatedProducts, products } from "@/lib/products";
-import { categoryPhrase, pageMetadata, shippingNote } from "@/lib/seo";
+import { getCategorySlug, products } from "@/lib/products";
+import { phraseForCategory, pageMetadata, shippingNote } from "@/lib/seo";
 import { siteName, siteUrl } from "@/lib/site";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 export function generateStaticParams() {
   return products.map((product) => ({ slug: product.slug }));
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!product) return { title: "Product" };
   const cover = product.photos[0];
   return pageMetadata({
-    title: product.seoTitle || `${product.title} · ${categoryPhrase[product.category]}`,
+    title: product.seoTitle || `${product.title} · ${phraseForCategory(product.category)}`,
     description: product.seoDescription || `${product.description} ${shippingNote}`,
     path: `/product/${product.slug}`,
     keywords: [
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         ...product.keywords,
         product.title,
         ...product.pieces.map((piece) => piece.title),
-        categoryPhrase[product.category],
+        phraseForCategory(product.category),
         "Philippines",
       ]),
     ],
@@ -43,7 +44,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await liveProduct(slug);
   if (!product) notFound();
   const categorySlug = getCategorySlug(product.category);
-  const related = await liveProducts(getRelatedProducts(product.slug, 3));
+  const related = (await liveProducts())
+    .filter((item) => item.category === product.category && item.slug !== product.slug)
+    .slice(0, 3);
   const photos = product.photos;
   const base = siteUrl();
   const schema = {

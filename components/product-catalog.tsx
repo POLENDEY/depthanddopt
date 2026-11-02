@@ -29,10 +29,10 @@ export function ProductCatalog({
 
     return products.filter((product) => {
       // Category filter match
+      const productCategory = categories.find((category) => category.title.toLowerCase() === product.category.toLowerCase());
       const categoryMatch =
         selectedCategory === "all" ||
-        product.category.toLowerCase() === selectedCategory.toLowerCase() ||
-        (selectedCategory === "3d-print" && product.category === "3D print");
+        productCategory?.slug === selectedCategory;
 
       if (!categoryMatch) return false;
 
@@ -52,16 +52,14 @@ export function ProductCatalog({
 
       return titleMatch || summaryMatch || descriptionMatch || categoryTextMatch || piecesMatch;
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, categories, selectedCategory, searchQuery]);
 
   // Count by category
   const counts = useMemo(() => {
     const map: Record<string, number> = { all: products.length };
     categories.forEach((cat) => {
       map[cat.slug] = products.filter(
-        (p) =>
-          p.category.toLowerCase() === cat.slug.toLowerCase() ||
-          (cat.slug === "3d-print" && p.category === "3D print")
+        (p) => p.category.toLowerCase() === cat.title.toLowerCase(),
       ).length;
     });
     return map;
@@ -72,9 +70,7 @@ export function ProductCatalog({
     return categories
       .map((cat) => {
         const catProducts = filteredProducts.filter(
-          (p) =>
-            p.category.toLowerCase() === cat.slug.toLowerCase() ||
-            (cat.slug === "3d-print" && p.category === "3D print")
+          (p) => p.category.toLowerCase() === cat.title.toLowerCase(),
         );
         return {
           category: cat,

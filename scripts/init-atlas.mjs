@@ -65,6 +65,11 @@ await db.collection("inquiry_replies").createIndex({ inquiry_id: 1, sent_at: 1 }
 for (const name of ["app_settings", "heartbeats"]) {
   if (!(await db.listCollections({ name }).hasNext())) await db.createCollection(name);
 }
+for (const name of ["custom_categories", "custom_products", "product_photos"]) {
+  if (!(await db.listCollections({ name }).hasNext())) await db.createCollection(name);
+}
+await db.collection("custom_products").createIndex({ category_slug: 1 }, { name: "custom_products_category_idx" });
+await db.collection("product_photos").createIndex({ product_slug: 1, sort_order: 1 }, { name: "product_photos_slug_order_idx" });
 
 const collections = (await db.listCollections().toArray()).map((c) => c.name).sort();
 console.log(`Atlas database "${dbName}" collections:`);
