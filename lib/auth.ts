@@ -99,7 +99,6 @@ export async function signSession() {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(adminEmail())
     .setIssuedAt()
-    .setExpirationTime("12h")
     .sign(secret);
 }
 
@@ -121,6 +120,6 @@ export function sessionCookieOptions() {
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: 60 * 60 * 24 * 400,
   };
 }

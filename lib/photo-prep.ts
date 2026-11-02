@@ -282,7 +282,7 @@ async function stampWatermark(ctx: CanvasRenderingContext2D, width: number, heig
   ctx.restore();
 }
 
-async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress) => void): Promise<PreparedPhoto> {
+async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress) => void, rotation = 0): Promise<PreparedPhoto> {
   onProgress?.({ text: "Preparing image. The first cutout can take a minute.", percent: 8 });
   const source = await toBlob(await canvasFromBlob(file, 2400), "image/png");
 
@@ -310,10 +310,11 @@ async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress
 
   const tilt = levelDegrees(pixels.data, cutout.width, cutout.height);
   const leveled = tilt ? rotate(cutout, tilt) : cutout;
-  const leveledPixels = context(leveled).getImageData(0, 0, leveled.width, leveled.height);
-  const bounds = opaqueBounds(leveledPixels.data, leveled.width, leveled.height);
+  const oriented = rotation ? rotate(leveled, rotation) : leveled;
+  const orientedPixels = context(oriented).getImageData(0, 0, oriented.width, oriented.height);
+  const bounds = opaqueBounds(orientedPixels.data, oriented.width, oriented.height);
   if (!bounds) throw new Error("No product was found in that photo. Try a clearer shot, or upload it as a raw photo.");
-  const product = crop(leveled, bounds);
+  const product = crop(oriented, bounds);
 
   const out = blankCanvas(outputSize, outputSize);
   const ctx = context(out);
@@ -332,13 +333,14 @@ async function whiteWithWatermark(file: File, onProgress?: (update: PrepProgress
   return { file: new File([blob], "photo.webp", { type: "image/webp" }), width: outputSize, height: outputSize };
 }
 
-async function rawPhoto(file: File, onProgress?: (update: PrepProgress) => void): Promise<PreparedPhoto> {
+async function rawPhoto(file: File, onProgress?: (update: PrepProgress) => void, rotation = 0): Promise<PreparedPhoto> {
   onProgress?.({ text: "Resizing and converting to WebP", percent: 40 });
-  const canvas = await canvasFromBlob(file, outputSize);
-  const blob = await encodeWebp(canvas);
-  return { file: new File([blob], "photo.webp", { type: "image/webp" }), width: canvas.width, height: canvas.height };
+  const source = await canvasFromBlob(file, outputSize);
+  const oriented = rotation ? rotate(source, rotation) : source;
+  const blob = await encodeWebp(oriented);
+  return { file: new File([blob], "photo.webp", { type: "image/webp" }), width: oriented.width, height: oriented.height };
 }
 
-export function preparePhoto(file: File, style: PhotoStyle, onProgress?: (update: PrepProgress) => void) {
-  return style === "raw" ? rawPhoto(file, onProgress) : whiteWithWatermark(file, onProgress);
+export function preparePhoto(file: File, style: PhotoStyle, onProgress?: (update: PrepProgress) => void, rotation = 0) {
+  return style === "raw" ? rawPhoto(file, onProgress, rotation) : whiteWithWatermark(file, onProgress, rotation);
 }

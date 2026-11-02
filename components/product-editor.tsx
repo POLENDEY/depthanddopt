@@ -36,10 +36,12 @@ export type EditorProduct = {
 type Pending = {
   key: string;
   file: File;
+  source: File;
   preview: string;
   original: string;
   width: number;
   height: number;
+  rotation: number;
   style: PhotoStyle;
   alt: string;
   name: string;
@@ -58,6 +60,7 @@ type DatabaseOption = {
 
 const brand = "Depth & Dot";
 const newCategoryOption = "__new";
+const newProductOption = "__create_product";
 
 function CreateProductForm({
   categories,
@@ -132,13 +135,13 @@ function CreateProductForm({
   }
 
   return (
-    <section className="photo-manager" aria-labelledby="create-product-heading">
+    <section className="photo-manager" id="create-product-form" aria-labelledby="create-product-heading">
       <p className="kicker" id="create-product-heading">Add a product</p>
       <p className="note">Create a new catalog item, or add a category here if it does not exist yet.</p>
       <form className="editor-fields" onSubmit={submit}>
         <label className="editor-field">
           <span>Product name</span>
-          <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={80} required disabled={busy} />
+          <input id="create-product-name" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={80} required disabled={busy} />
         </label>
         <label className="editor-field">
           <span>Category</span>
@@ -233,19 +236,31 @@ function when(iso: string | null) {
   return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
 }
 
-function upload(slug: string, item: Pending, publish: boolean, onPercent: (percent: number) => void) {
+async function upload(slug: string, item: Pending, publish: boolean, onPercent: (percent: number) => void) {
+  let file = item.file;
+  let width = item.width;
+  let height = item.height;
+  if (item.rotation) {
+    const prepared = await preparePhoto(item.source, item.style, (update) => onPercent(Math.round(update.percent * 0.8)), item.rotation);
+    file = prepared.file;
+    width = prepared.width;
+    height = prepared.height;
+  }
   return new Promise<EditorPhoto>((resolve, reject) => {
     const form = new FormData();
-    form.set("file", item.file);
+    form.set("file", file);
     form.set("style", item.style);
-    form.set("width", String(item.width));
-    form.set("height", String(item.height));
+    form.set("width", String(width));
+    form.set("height", String(height));
     form.set("alt", item.alt);
     form.set("publish", String(publish));
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `/api/admin/products/${encodeURIComponent(slug)}/photos`);
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onPercent(Math.round((event.loaded / event.total) * 100));
+      if (event.lengthComputable) {
+        const ratio = event.loaded / event.total;
+        onPercent(Math.round(item.rotation ? 80 + ratio * 20 : ratio * 100));
+      }
     };
     xhr.onload = () => {
       let data: { photo?: EditorPhoto & { alt: string | null }; error?: string } = {};
@@ -359,10 +374,12 @@ export function ProductEditor({
         const item: Pending = {
           key: `${Date.now()}-${index}-${file.name}`,
           file: prepared.file,
+          source: file,
           preview: URL.createObjectURL(prepared.file),
           original: URL.createObjectURL(file),
           width: prepared.width,
           height: prepared.height,
+          rotation: 0,
           style,
           alt: "",
           name: file.name,
@@ -396,6 +413,14 @@ export function ProductEditor({
     setDirty(true);
   }
 
+  function rotatePending(item: Pending, degrees: number) {
+    setPending((current) => current.map((entry) =>
+      entry.key === item.key
+        ? { ...entry, rotation: (entry.rotation + degrees + 360) % 360 }
+        : entry,
+    ));
+  }
+
   function discard(item: Pending) {
     URL.revokeObjectURL(item.preview);
     URL.revokeObjectURL(item.original);
@@ -426,7 +451,7 @@ export function ProductEditor({
     const uploaded: EditorPhoto[] = [];
     try {
       for (const [index, item] of pending.entries()) {
-        const label = `Uploading photo ${index + 1} of ${pending.length}`;
+        const label = `${item.rotation ? "Preparing and uploading" : "Uploading"} photo ${index + 1} of ${pending.length}`;
         const photo = await upload(product.slug, item, action === "publish", (percent) =>
           setProgress({ label, percent: Math.round(((index + percent / 100) / pending.length) * 100) }),
         );
@@ -482,7 +507,18 @@ export function ProductEditor({
             <p className="kicker" id="editor-heading">Product</p>
             <label className="photo-product-picker">
               <span className="note">Choose a product to edit</span>
-              <select value={product.slug} onChange={(event) => switchProduct(event.target.value)} disabled={Boolean(busy)}>
+              <select
+                value={product.slug}
+                onChange={(event) => {
+                  if (event.target.value === newProductOption) {
+                    document.getElementById("create-product-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    document.getElementById("create-product-name")?.focus({ preventScroll: true });
+                    return;
+                  }
+                  switchProduct(event.target.value);
+                }}
+                disabled={Boolean(busy)}
+              >
                 {[...new Set(products.map((item) => item.category))].map((category) => (
                   <optgroup key={category} label={category}>
                     {products
@@ -495,6 +531,7 @@ export function ProductEditor({
                       ))}
                   </optgroup>
                 ))}
+                <option value={newProductOption}>+ Create a new product...</option>
               </select>
             </label>
           </div>
@@ -582,7 +619,14 @@ export function ProductEditor({
               return (
                 <li key={key} className={`photo-tile${tile.kind === "pending" ? " is-pending" : ""}`}>
                   <button type="button" className="photo-tile-image" onClick={() => setPreview({ index, before: false })} aria-label={`Preview photo ${index + 1}`}>
-                    <img src={src} alt="" width={400} height={400} loading="lazy" />
+                    <img
+                      src={src}
+                      alt=""
+                      width={400}
+                      height={400}
+                      loading="lazy"
+                      style={tile.kind === "pending" && tile.item.rotation ? { transform: `rotate(${tile.item.rotation}deg)` } : undefined}
+                    />
                     {index === 0 ? <span className="photo-cover-badge">Cover</span> : null}
                     {tile.kind === "pending" ? (
                       <span className="photo-state-badge">Not uploaded</span>
@@ -612,7 +656,11 @@ export function ProductEditor({
                           <button type="button" className="photo-delete" onClick={() => removeSaved(tile.photo)} disabled={Boolean(busy)}>Delete</button>
                         </>
                       ) : (
-                        <button type="button" className="photo-delete" onClick={() => discard(tile.item)} disabled={Boolean(busy)}>Remove</button>
+                        <>
+                          <button type="button" onClick={() => rotatePending(tile.item, -90)} disabled={Boolean(busy)} aria-label="Rotate photo counterclockwise" title="Rotate counterclockwise">↶</button>
+                          <button type="button" onClick={() => rotatePending(tile.item, 90)} disabled={Boolean(busy)} aria-label="Rotate photo clockwise" title="Rotate clockwise">↷</button>
+                          <button type="button" className="photo-delete" onClick={() => discard(tile.item)} disabled={Boolean(busy)}>Remove</button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -743,6 +791,7 @@ export function ProductEditor({
               className="photo-preview-image"
               src={current.kind === "saved" ? current.photo.url : preview.before ? current.item.original : current.item.preview}
               alt={current.kind === "saved" ? current.photo.alt : current.item.alt}
+              style={current.kind === "pending" && !preview.before && current.item.rotation ? { transform: `rotate(${current.item.rotation}deg)` } : undefined}
             />
             <div className="photo-preview-nav">
               <button type="button" className="button secondary" onClick={() => setPreview({ index: (preview.index - 1 + tiles.length) % tiles.length, before: false })} disabled={tiles.length < 2}>Previous</button>

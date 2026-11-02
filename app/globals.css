@@ -723,7 +723,7 @@ textarea { min-height: 9rem; resize: vertical; }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.9rem; margin: 1.2rem 0 0; padding: 0; list-style: none; }
 .photo-tile { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; }
 .photo-tile-image { position: relative; aspect-ratio: 1; background: var(--soft); }
-.photo-tile-image img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.photo-tile-image img { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform 0.2s ease; }
 .photo-cover-badge { position: absolute; top: 0.6rem; left: 0.6rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .photo-tile-actions { display: grid; gap: 0.5rem; padding: 0.7rem; }
 .photo-tile-actions .note { margin: 0; font-size: 0.8rem; }
